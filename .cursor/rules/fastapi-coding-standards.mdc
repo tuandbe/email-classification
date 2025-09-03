@@ -1,0 +1,107 @@
+---
+globs: *.py
+description: FastAPI and Python coding standards and best practices
+---
+
+# FastAPI Coding Standards
+
+## FastAPI Specific Rules
+
+### API Endpoints
+- Use dependency injection for shared resources
+- Implement proper HTTP status codes
+- Use Pydantic models for request/response validation
+- Include comprehensive docstrings with examples
+- Handle errors gracefully with proper HTTP exceptions
+
+```python
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from typing import List
+
+router = APIRouter(prefix="/v1", tags=["predictions"])
+
+class PredictionRequest(BaseModel):
+    email_body: str
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "email_body": "We would like to schedule an interview with you"
+            }
+        }
+
+@router.post("/predict", response_model=PredictionResponse)
+async def predict_interview(
+    request: PredictionRequest,
+    prediction_service: PredictionService = Depends(get_prediction_service)
+) -> PredictionResponse:
+    """
+    Predict if email is interview-related
+    
+    Args:
+        request: Email content to analyze
+        prediction_service: Injected prediction service
+        
+    Returns:
+        Prediction result with confidence score
+        
+    Raises:
+        HTTPException: If prediction fails
+    """
+    try:
+        result = await prediction_service.predict(request.email_body)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+### Dependency Injection
+- Create dependency functions for shared resources
+- Use proper typing for dependencies
+- Implement proper error handling in dependencies
+
+```python
+from functools import lru_cache
+from app.core.config import Settings
+
+@lru_cache()
+def get_settings() -> Settings:
+    return Settings()
+
+async def get_prediction_service(
+    settings: Settings = Depends(get_settings)
+) -> PredictionService:
+    return PredictionService(settings)
+```
+
+## Python Best Practices
+
+### Type Hints
+- Always use type hints for function parameters and return values
+- Use `Optional` for nullable values
+- Use `List`, `Dict`, `Set` from typing module
+- Use `Union` for multiple possible types
+
+### Error Handling
+- Use specific exception types
+- Log errors with appropriate levels
+- Provide meaningful error messages
+- Use FastAPI's HTTPException for API errors
+
+### Async/Await
+- Use async functions for I/O operations
+- Use `await` for async calls
+- Don't mix sync and async code unnecessarily
+
+### Code Organization
+- Keep functions small and focused
+- Use descriptive variable and function names
+- Follow PEP 8 style guidelines
+- Use docstrings for all public functions and classes
+
+### Testing
+- Write unit tests for all business logic
+- Use pytest fixtures for test setup
+- Mock external dependencies
+- Test both success and error cases

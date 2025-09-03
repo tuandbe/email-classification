@@ -1,0 +1,232 @@
+---
+globs: *model*.py,*preprocessing*.py,*service*.py
+description: Machine learning model integration patterns for FastAPI
+---
+
+# ML Model Integration Rules
+
+## Model Service Pattern
+Follow the service pattern for ML model integration:
+
+```python
+from abc import ABC, abstractmethod
+from typing import Dict, Any, Tuple
+import joblib
+import pandas as pd
+from pathlib import Path
+
+class BaseMLService(ABC):
+    """Base class for ML services"""
+    
+    def __init__(self, model_path: str):
+        self.model_path = Path(model_path)
+        self.model = None
+        self.vectorizer = None
+        self.is_loaded = False
+    
+    @abstractmethod
+    async def load_model(self) -> None:
+        """Load the trained model"""
+        pass
+    
+    @abstractmethod
+    async def predict(self, input_data: Any) -> Dict[str, Any]:
+        """Make prediction"""
+        pass
+    
+    def _validate_model_loaded(self) -> None:
+        """Validate that model is loaded"""
+        if not self.is_loaded:
+            raise RuntimeError("Model not loaded. Call load_model() first.")
+```
+
+## Preprocessing Service
+Implement preprocessing as a separate service:
+
+```python
+import re
+from typing import str
+from app.core.config import Settings
+
+class PreprocessingService:
+    """Text preprocessing service"""
+    
+    def __init__(self, settings: Settings):
+        self.settings = settings
+    
+    def preprocess_text(self, text: str) -> str:
+        """
+        Preprocess email text for classification
+        
+        Args:
+            text: Raw email body text
+            
+        Returns:
+            Cleaned and normalized text
+        """
+        if not text or not isinstance(text, str):
+            return ""
+        
+        # Convert to lowercase
+        text = text.lower()
+        
+        # Remove extra whitespace
+        text = re.sub(r'\s+', ' ', text)
+        
+        # Remove special characters but keep basic punctuation
+        text = re.sub(r'[^\w\s\.\,\!\?]', '', text)
+        
+        return text.strip()
+    
+    def extract_features(self, text: str) -> Dict[str, Any]:
+        """
+        Extract additional features from email text
+        
+        Args:
+            text: Preprocessed email text
+            
+        Returns:
+            Dictionary of extracted features
+        """
+        return {
+            "length": len(text),
+            "word_count": len(text.split()),
+            "has_interview_keywords": self._has_interview_keywords(text),
+            "has_schedule_keywords": self._has_schedule_keywords(text)
+        }
+    
+    def _has_interview_keywords(self, text: str) -> bool:
+        """Check for interview-related keywords"""
+        keywords = ["interview", "meeting", "discuss", "opportunity"]
+        return any(keyword in text for keyword in keywords)
+    
+    def _has_schedule_keywords(self, text: str) -> bool:
+        """Check for scheduling-related keywords"""
+        keywords = ["schedule", "time", "date", "available", "calendar"]
+        return any(keyword in text for keyword in keywords)
+```
+
+## Model Service Implementation
+Implement the actual ML model service:
+
+```python
+import joblib
+import numpy as np
+from typing import Dict, Any, Tuple
+from app.services.preprocessing import PreprocessingService
+from app.core.config import Settings
+
+class PredictionService(BaseMLService):
+    """Email classification prediction service"""
+    
+    def __init__(self, settings: Settings):
+        super().__init__(settings.model_path)
+        self.settings = settings
+        self.preprocessor = PreprocessingService(settings)
+    
+    async def load_model(self) -> None:
+        """Load the trained model and vectorizer"""
+        try:
+            self.model = joblib.load(self.model_path / "classifier.pkl")
+            self.vectorizer = joblib.load(self.model_path / "vectorizer.pkl")
+            self.is_loaded = True
+        except Exception as e:
+            raise RuntimeError(f"Failed to load model: {e}")
+    
+    async def predict(self, email_text: str) -> Dict[str, Any]:
+        """
+        Predict if email is interview-related
+        
+        Args:
+            email_text: Raw email body text
+            
+        Returns:
+            Dictionary with prediction results
+        """
+        self._validate_model_loaded()
+        
+        # Preprocess text
+        processed_text = self.preprocessor.preprocess_text(email_text)
+        
+        if not processed_text:
+            return {
+                "is_interview": "No",
+                "confidence": 0.0,
+                "error": "Empty or invalid input text"
+            }
+        
+        # Vectorize text
+        text_vector = self.vectorizer.transform([processed_text])
+        
+        # Make prediction
+        prediction = self.model.predict(text_vector)[0]
+        confidence = self.model.predict_proba(text_vector)[0].max()
+        
+        return {
+            "is_interview": "Yes" if prediction == 1 else "No",
+            "confidence": float(confidence),
+            "processed_text": processed_text
+        }
+```
+
+## Configuration
+Use proper configuration management:
+
+```python
+from pydantic import BaseSettings
+from typing import Optional
+
+class Settings(BaseSettings):
+    """Application settings"""
+    
+    # Model settings
+    model_path: str = "models"
+    model_accuracy_threshold: float = 0.7
+    
+    # API settings
+    api_title: str = "Email Interview Classifier"
+    api_version: str = "1.0.0"
+    debug: bool = False
+    
+    # Logging
+    log_level: str = "INFO"
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+```
+
+## Error Handling
+Implement proper error handling for ML operations:
+
+```python
+from fastapi import HTTPException
+import logging
+
+logger = logging.getLogger(__name__)
+
+class MLModelError(Exception):
+    """Custom exception for ML model errors"""
+    pass
+
+async def safe_predict(prediction_service: PredictionService, text: str) -> Dict[str, Any]:
+    """Safely make prediction with error handling"""
+    try:
+        if not prediction_service.is_loaded:
+            await prediction_service.load_model()
+        
+        result = await prediction_service.predict(text)
+        
+        # Validate confidence threshold
+        if result["confidence"] < 0.5:
+            logger.warning(f"Low confidence prediction: {result['confidence']}")
+        
+        return result
+        
+    except MLModelError as e:
+        logger.error(f"ML model error: {e}")
+        raise HTTPException(status_code=500, detail="Model prediction failed")
+    except Exception as e:
+        logger.error(f"Unexpected error during prediction: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+```

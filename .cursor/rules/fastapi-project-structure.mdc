@@ -1,0 +1,53 @@
+---
+alwaysApply: true
+description: FastAPI project structure and organization best practices
+---
+
+# FastAPI Project Structure Rules
+
+## Project Organization
+Follow the recommended FastAPI project structure as defined in [PROJECT_STRUCTURE.md](mdc:PROJECT_STRUCTURE.md):
+
+```
+app/
+├── __init__.py
+├── main.py                    # FastAPI app entry point
+├── api/
+│   ├── __init__.py
+│   ├── endpoints/             # API route handlers
+│   │   ├── __init__.py
+│   │   └── predictions.py
+│   └── dependencies.py        # Shared dependencies
+├── core/
+│   ├── __init__.py
+│   ├── config.py             # Configuration settings
+│   └── security.py           # Security utilities
+├── models/
+│   ├── __init__.py
+│   └── ml_model.py           # ML model classes
+├── schemas/
+│   ├── __init__.py
+│   ├── prediction.py         # Pydantic models
+│   └── health.py
+├── services/
+│   ├── __init__.py
+│   ├── preprocessing.py      # Business logic
+│   └── prediction_service.py
+└── utils/
+    ├── __init__.py
+    └── helpers.py
+```
+
+## Key Principles
+- **Separation of Concerns**: Keep API routes, business logic, and data models separate
+- **Dependency Injection**: Use FastAPI's dependency system for shared resources
+- **Type Hints**: Always use type hints for better code clarity and IDE support
+- **Async/Await**: Use async functions for I/O operations
+- **Error Handling**: Implement proper error handling and logging
+- **Testing**: Write comprehensive tests for all components
+
+## File Naming Conventions
+- Use snake_case for file and directory names
+- Endpoint files should be plural (e.g., `predictions.py`, `users.py`)
+- Service files should describe their purpose (e.g., `prediction_service.py`)
+- Schema files should match their domain (e.g., `prediction.py`, `user.py`)

@@ -1,0 +1,283 @@
+---
+globs: test_*.py,*_test.py
+description: Testing standards and patterns for FastAPI applications
+---
+
+# Testing Standards for FastAPI
+
+## Test Structure
+Follow pytest conventions and organize tests by feature:
+
+```
+tests/
+├── __init__.py
+├── conftest.py              # Shared fixtures
+├── test_preprocessing.py    # Unit tests for preprocessing
+├── test_model.py           # Unit tests for ML models
+├── test_api.py             # API integration tests
+└── test_services/          # Service layer tests
+    ├── __init__.py
+    └── test_prediction_service.py
+```
+
+## Test Configuration
+Set up proper test configuration in `conftest.py`:
+
+```python
+import pytest
+import asyncio
+from fastapi.testclient import TestClient
+from app.main import app
+from app.core.config import Settings
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create an instance of the default event loop for the test session."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+@pytest.fixture
+def test_settings():
+    """Test configuration settings"""
+    return Settings(
+        model_path="tests/fixtures/models",
+        debug=True,
+        log_level="DEBUG"
+    )
+
+@pytest.fixture
+def client():
+    """Test client for FastAPI app"""
+    return TestClient(app)
+
+@pytest.fixture
+async def prediction_service(test_settings):
+    """Mock prediction service for testing"""
+    from app.services.prediction_service import PredictionService
+    service = PredictionService(test_settings)
+    # Mock the model loading
+    service.is_loaded = True
+    return service
+```
+
+## Unit Testing Patterns
+
+### Preprocessing Tests
+```python
+import pytest
+from app.services.preprocessing import PreprocessingService
+from app.core.config import Settings
+
+class TestPreprocessingService:
+    """Test cases for preprocessing service"""
+    
+    @pytest.fixture
+    def preprocessor(self):
+        settings = Settings()
+        return PreprocessingService(settings)
+    
+    def test_preprocess_text_basic(self, preprocessor):
+        """Test basic text preprocessing"""
+        input_text = "Hello World! This is a TEST."
+        expected = "hello world! this is a test."
+        result = preprocessor.preprocess_text(input_text)
+        assert result == expected
+    
+    def test_preprocess_text_empty(self, preprocessor):
+        """Test preprocessing empty text"""
+        assert preprocessor.preprocess_text("") == ""
+        assert preprocessor.preprocess_text(None) == ""
+        assert preprocessor.preprocess_text("   ") == ""
+    
+    def test_preprocess_text_special_chars(self, preprocessor):
+        """Test preprocessing with special characters"""
+        input_text = "Hello@#$%^&*()World"
+        expected = "helloworld"
+        result = preprocessor.preprocess_text(input_text)
+        assert result == expected
+    
+    def test_extract_features(self, preprocessor):
+        """Test feature extraction"""
+        text = "We would like to schedule an interview"
+        features = preprocessor.extract_features(text)
+        
+        assert "length" in features
+        assert "word_count" in features
+        assert "has_interview_keywords" in features
+        assert "has_schedule_keywords" in features
+        assert features["has_interview_keywords"] is True
+        assert features["has_schedule_keywords"] is True
+```
+
+### API Tests
+```python
+import pytest
+from fastapi.testclient import TestClient
+from unittest.mock import patch, AsyncMock
+
+class TestPredictionAPI:
+    """Test cases for prediction API endpoints"""
+    
+    def test_predict_endpoint_success(self, client):
+        """Test successful prediction request"""
+        with patch('app.api.endpoints.predictions.get_prediction_service') as mock_service:
+            # Mock the service response
+            mock_service.return_value.predict = AsyncMock(return_value={
+                "is_interview": "Yes",
+                "confidence": 0.85
+            })
+            
+            response = client.post(
+                "/v1/predict",
+                json={"email_body": "We would like to schedule an interview"}
+            )
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["is_interview"] == "Yes"
+            assert data["confidence"] == 0.85
+    
+    def test_predict_endpoint_invalid_input(self, client):
+        """Test prediction with invalid input"""
+        response = client.post(
+            "/v1/predict",
+            json={"email_body": ""}
+        )
+        
+        assert response.status_code == 400
+    
+    def test_predict_endpoint_missing_field(self, client):
+        """Test prediction with missing required field"""
+        response = client.post(
+            "/v1/predict",
+            json={}
+        )
+        
+        assert response.status_code == 422
+    
+    def test_health_check(self, client):
+        """Test health check endpoint"""
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert "status" in data
+        assert data["status"] == "healthy"
+```
+
+### Service Tests
+```python
+import pytest
+from unittest.mock import patch, MagicMock
+from app.services.prediction_service import PredictionService
+from app.core.config import Settings
+
+class TestPredictionService:
+    """Test cases for prediction service"""
+    
+    @pytest.fixture
+    def service(self):
+        settings = Settings(model_path="test_models")
+        return PredictionService(settings)
+    
+    @pytest.mark.asyncio
+    async def test_load_model_success(self, service):
+        """Test successful model loading"""
+        with patch('joblib.load') as mock_load:
+            mock_model = MagicMock()
+            mock_vectorizer = MagicMock()
+            mock_load.side_effect = [mock_model, mock_vectorizer]
+            
+            await service.load_model()
+            
+            assert service.is_loaded is True
+            assert service.model == mock_model
+            assert service.vectorizer == mock_vectorizer
+    
+    @pytest.mark.asyncio
+    async def test_load_model_failure(self, service):
+        """Test model loading failure"""
+        with patch('joblib.load', side_effect=FileNotFoundError("Model not found")):
+            with pytest.raises(RuntimeError, match="Failed to load model"):
+                await service.load_model()
+    
+    @pytest.mark.asyncio
+    async def test_predict_success(self, service):
+        """Test successful prediction"""
+        # Mock loaded model
+        service.is_loaded = True
+        service.model = MagicMock()
+        service.vectorizer = MagicMock()
+        
+        # Mock prediction results
+        service.model.predict.return_value = [1]
+        service.model.predict_proba.return_value = [[0.2, 0.8]]
+        service.vectorizer.transform.return_value = [[0, 1, 0, 1]]
+        
+        result = await service.predict("We would like to schedule an interview")
+        
+        assert result["is_interview"] == "Yes"
+        assert result["confidence"] == 0.8
+        assert "processed_text" in result
+    
+    def test_predict_model_not_loaded(self, service):
+        """Test prediction when model is not loaded"""
+        with pytest.raises(RuntimeError, match="Model not loaded"):
+            service.predict("test text")
+```
+
+## Test Data Management
+Use fixtures for test data:
+
+```python
+@pytest.fixture
+def sample_emails():
+    """Sample email data for testing"""
+    return {
+        "interview_email": "We would like to schedule an interview with you for the position.",
+        "non_interview_email": "Thank you for your application. We will review it and get back to you.",
+        "empty_email": "",
+        "long_email": "This is a very long email with lots of content. " * 100
+    }
+
+@pytest.fixture
+def mock_model_data():
+    """Mock model data for testing"""
+    return {
+        "classifier": MagicMock(),
+        "vectorizer": MagicMock(),
+        "metadata": {
+            "accuracy": 0.85,
+            "training_date": "2024-01-01",
+            "version": "1.0.0"
+        }
+    }
+```
+
+## Test Coverage
+Aim for high test coverage:
+
+- **Unit Tests**: Test individual functions and methods
+- **Integration Tests**: Test API endpoints with real dependencies
+- **Edge Cases**: Test boundary conditions and error scenarios
+- **Performance Tests**: Test response times and resource usage
+
+## Test Commands
+Use these commands for testing:
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=app --cov-report=html
+
+# Run specific test file
+pytest tests/test_preprocessing.py
+
+# Run with verbose output
+pytest -v
+
+# Run tests in parallel
+pytest -n auto
+```

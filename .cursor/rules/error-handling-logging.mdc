@@ -1,0 +1,404 @@
+---
+globs: *.py
+description: Error handling and logging standards for FastAPI applications
+---
+
+# Error Handling and Logging Standards
+
+## Logging Configuration
+Set up proper logging configuration:
+
+```python
+import logging
+import sys
+from pathlib import Path
+from app.core.config import Settings
+
+def setup_logging(settings: Settings):
+    """Configure application logging"""
+    
+    # Create logs directory
+    log_dir = Path("logs")
+    log_dir.mkdir(exist_ok=True)
+    
+    # Configure logging format
+    log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    date_format = "%Y-%m-%d %H:%M:%S"
+    
+    # Configure root logger
+    logging.basicConfig(
+        level=getattr(logging, settings.log_level.upper()),
+        format=log_format,
+        datefmt=date_format,
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+            logging.FileHandler(log_dir / "app.log"),
+            logging.FileHandler(log_dir / "error.log", level=logging.ERROR)
+        ]
+    )
+    
+    # Set specific logger levels
+    logging.getLogger("uvicorn").setLevel(logging.INFO)
+    logging.getLogger("fastapi").setLevel(logging.INFO)
+    
+    return logging.getLogger(__name__)
+```
+
+## Custom Exception Classes
+Define custom exceptions for better error handling:
+
+```python
+class EmailClassifierError(Exception):
+    """Base exception for email classifier errors"""
+    pass
+
+class ModelNotLoadedError(EmailClassifierError):
+    """Raised when model is not loaded"""
+    pass
+
+class InvalidInputError(EmailClassifierError):
+    """Raised when input validation fails"""
+    pass
+
+class PredictionError(EmailClassifierError):
+    """Raised when prediction fails"""
+    pass
+
+class ConfigurationError(EmailClassifierError):
+    """Raised when configuration is invalid"""
+    pass
+```
+
+## Error Handling Patterns
+
+### Service Layer Error Handling
+```python
+import logging
+from typing import Dict, Any
+from app.exceptions import ModelNotLoadedError, InvalidInputError, PredictionError
+
+logger = logging.getLogger(__name__)
+
+class PredictionService:
+    """Email classification prediction service with proper error handling"""
+    
+    async def predict(self, email_text: str) -> Dict[str, Any]:
+        """
+        Predict if email is interview-related with comprehensive error handling
+        
+        Args:
+            email_text: Raw email body text
+            
+        Returns:
+            Dictionary with prediction results
+            
+        Raises:
+            ModelNotLoadedError: If model is not loaded
+            InvalidInputError: If input is invalid
+            PredictionError: If prediction fails
+        """
+        try:
+            # Validate input
+            if not email_text or not isinstance(email_text, str):
+                raise InvalidInputError("Email text must be a non-empty string")
+            
+            # Check model status
+            if not self.is_loaded:
+                raise ModelNotLoadedError("Model must be loaded before making predictions")
+            
+            # Log prediction attempt
+            logger.info(f"Making prediction for email of length: {len(email_text)}")
+            
+            # Preprocess text
+            processed_text = self.preprocessor.preprocess_text(email_text)
+            
+            if not processed_text:
+                logger.warning("Empty text after preprocessing")
+                return {
+                    "is_interview": "No",
+                    "confidence": 0.0,
+                    "error": "Empty text after preprocessing"
+                }
+            
+            # Make prediction
+            result = await self._make_prediction(processed_text)
+            
+            # Log successful prediction
+            logger.info(f"Prediction completed: {result['is_interview']} (confidence: {result['confidence']:.3f})")
+            
+            return result
+            
+        except InvalidInputError as e:
+            logger.error(f"Invalid input error: {e}")
+            raise
+        except ModelNotLoadedError as e:
+            logger.error(f"Model not loaded error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during prediction: {e}", exc_info=True)
+            raise PredictionError(f"Prediction failed: {str(e)}")
+    
+    async def _make_prediction(self, processed_text: str) -> Dict[str, Any]:
+        """Internal method to make prediction with error handling"""
+        try:
+            # Vectorize text
+            text_vector = self.vectorizer.transform([processed_text])
+            
+            # Make prediction
+            prediction = self.model.predict(text_vector)[0]
+            confidence = self.model.predict_proba(text_vector)[0].max()
+            
+            return {
+                "is_interview": "Yes" if prediction == 1 else "No",
+                "confidence": float(confidence),
+                "processed_text": processed_text
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in prediction model: {e}", exc_info=True)
+            raise PredictionError(f"Model prediction failed: {str(e)}")
+```
+
+### API Layer Error Handling
+```python
+from fastapi import HTTPException, Request
+from fastapi.responses import JSONResponse
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Global exception handler
+@app.exception_handler(InvalidInputError)
+async def invalid_input_handler(request: Request, exc: InvalidInputError):
+    """Handle invalid input errors"""
+    logger.warning(f"Invalid input error: {exc}")
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": "Invalid Input",
+            "message": str(exc),
+            "status_code": 400
+        }
+    )
+
+@app.exception_handler(ModelNotLoadedError)
+async def model_not_loaded_handler(request: Request, exc: ModelNotLoadedError):
+    """Handle model not loaded errors"""
+    logger.error(f"Model not loaded error: {exc}")
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "Service Unavailable",
+            "message": "Model is not loaded. Please try again later.",
+            "status_code": 503
+        }
+    )
+
+@app.exception_handler(PredictionError)
+async def prediction_error_handler(request: Request, exc: PredictionError):
+    """Handle prediction errors"""
+    logger.error(f"Prediction error: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Prediction Failed",
+            "message": "An error occurred during prediction. Please try again.",
+            "status_code": 500
+        }
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle general exceptions"""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "message": "An unexpected error occurred. Please try again later.",
+            "status_code": 500
+        }
+    )
+```
+
+### Endpoint Error Handling
+```python
+from fastapi import APIRouter, Depends, HTTPException
+from app.schemas.prediction import PredictionRequest, PredictionResponse
+from app.services.prediction_service import PredictionService
+from app.exceptions import InvalidInputError, ModelNotLoadedError, PredictionError
+import logging
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/v1", tags=["predictions"])
+
+@router.post("/predict", response_model=PredictionResponse)
+async def predict_interview(
+    request: PredictionRequest,
+    prediction_service: PredictionService = Depends(get_prediction_service)
+) -> PredictionResponse:
+    """
+    Predict if email is interview-related with comprehensive error handling
+    
+    Args:
+        request: Email content to analyze
+        prediction_service: Injected prediction service
+        
+    Returns:
+        Prediction result with confidence score
+        
+    Raises:
+        HTTPException: For various error conditions
+    """
+    try:
+        # Validate request
+        if not request.email_body or len(request.email_body.strip()) == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Email body cannot be empty"
+            )
+        
+        if len(request.email_body) > 10000:  # Reasonable limit
+            raise HTTPException(
+                status_code=400,
+                detail="Email body is too long (max 10,000 characters)"
+            )
+        
+        # Make prediction
+        result = await prediction_service.predict(request.email_body)
+        
+        return PredictionResponse(
+            is_interview=result["is_interview"],
+            confidence=result["confidence"]
+        )
+        
+    except InvalidInputError as e:
+        logger.warning(f"Invalid input: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+        
+    except ModelNotLoadedError as e:
+        logger.error(f"Model not loaded: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily unavailable. Please try again later."
+        )
+        
+    except PredictionError as e:
+        logger.error(f"Prediction error: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Prediction service error. Please try again."
+        )
+        
+    except Exception as e:
+        logger.error(f"Unexpected error in predict endpoint: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error. Please try again later."
+        )
+```
+
+## Logging Best Practices
+
+### Structured Logging
+```python
+import json
+from typing import Dict, Any
+
+def log_prediction_request(email_length: int, user_id: str = None):
+    """Log prediction request with structured data"""
+    log_data = {
+        "event": "prediction_request",
+        "email_length": email_length,
+        "user_id": user_id,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    logger.info(json.dumps(log_data))
+
+def log_prediction_result(prediction: str, confidence: float, processing_time: float):
+    """Log prediction result with structured data"""
+    log_data = {
+        "event": "prediction_result",
+        "prediction": prediction,
+        "confidence": confidence,
+        "processing_time_ms": processing_time * 1000,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    logger.info(json.dumps(log_data))
+```
+
+### Performance Logging
+```python
+import time
+from functools import wraps
+
+def log_execution_time(func):
+    """Decorator to log function execution time"""
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        start_time = time.time()
+        try:
+            result = await func(*args, **kwargs)
+            execution_time = time.time() - start_time
+            logger.info(f"{func.__name__} executed in {execution_time:.3f}s")
+            return result
+        except Exception as e:
+            execution_time = time.time() - start_time
+            logger.error(f"{func.__name__} failed after {execution_time:.3f}s: {e}")
+            raise
+    return wrapper
+```
+
+## Health Check with Error Reporting
+```python
+from fastapi import APIRouter, Depends
+from app.services.prediction_service import PredictionService
+import logging
+
+logger = logging.getLogger(__name__)
+router = APIRouter(tags=["health"])
+
+@router.get("/health")
+async def health_check(
+    prediction_service: PredictionService = Depends(get_prediction_service)
+):
+    """
+    Health check endpoint with detailed status information
+    
+    Returns:
+        Health status with component details
+    """
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "components": {}
+    }
+    
+    try:
+        # Check model status
+        if prediction_service.is_loaded:
+            health_status["components"]["model"] = {
+                "status": "healthy",
+                "loaded": True
+            }
+        else:
+            health_status["components"]["model"] = {
+                "status": "unhealthy",
+                "loaded": False,
+                "error": "Model not loaded"
+            }
+            health_status["status"] = "unhealthy"
+        
+        # Check database connection (if applicable)
+        # health_status["components"]["database"] = await check_db_connection()
+        
+        # Check external services (if applicable)
+        # health_status["components"]["external_services"] = await check_external_services()
+        
+    except Exception as e:
+        logger.error(f"Health check failed: {e}", exc_info=True)
+        health_status["status"] = "unhealthy"
+        health_status["error"] = str(e)
+    
+    return health_status
+```
