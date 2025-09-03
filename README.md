@@ -242,69 +242,6 @@ flowchart TD
     style I fill:#c8e6c9
 ```
 
-### Model Performance Optimization Pipeline
-
-```mermaid
-flowchart TD
-    A[Baseline Model: 100% Accuracy] --> B[Performance Analysis]
-    B --> C[Identify Improvement Areas]
-    
-    C --> D[Feature Engineering]
-    C --> E[Model Selection]
-    C --> F[Hyperparameter Tuning]
-    C --> G[Ensemble Methods]
-    
-    D --> D1[Add Email Metadata Features]
-    D --> D2[Sentiment Analysis Features]
-    D --> D3[Named Entity Recognition]
-    D --> D4[Email Structure Analysis]
-    
-    E --> E1[Random Forest]
-    E --> E2[SVM with RBF Kernel]
-    E --> E3[Gradient Boosting]
-    E --> E4[Neural Networks]
-    
-    F --> F1[Grid Search CV]
-    F --> F2[Random Search CV]
-    F --> F3[Bayesian Optimization]
-    
-    G --> G1[Voting Classifier]
-    G --> G2[Stacking]
-    G --> G3[Bagging]
-    
-    D1 --> H[Enhanced Feature Set]
-    D2 --> H
-    D3 --> H
-    D4 --> H
-    E1 --> H
-    E2 --> H
-    E3 --> H
-    E4 --> H
-    F1 --> H
-    F2 --> H
-    F3 --> H
-    G1 --> H
-    G2 --> H
-    G3 --> H
-    
-    H --> I[Cross-Validation]
-    I --> J[Performance Metrics]
-    J --> K{Accuracy Improved?}
-    
-    K -->|Yes| L[Deploy New Model]
-    K -->|No| M[Try Different Approach]
-    M --> C
-    
-    L --> N[Monitor Production Performance]
-    N --> O[Collect Feedback]
-    O --> P[Continuous Improvement]
-    
-    style A fill:#e1f5fe
-    style H fill:#fff3e0
-    style L fill:#c8e6c9
-    style P fill:#e8f5e8
-```
-
 ## Project Structure
 
 ```
