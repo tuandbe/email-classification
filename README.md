@@ -242,7 +242,7 @@ httpx>=0.24.0  # For testing FastAPI
 
 ### 1. Setup Environment
 ```bash
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 ```
