@@ -117,6 +117,57 @@ POST /v1/predict
 
 ## Machine Learning Approach
 
+### Training Flow
+
+```mermaid
+flowchart TD
+    A[Start Training] --> B[Load CSV Data]
+    B --> C[Validate Data Format]
+    C --> D[Check Required Columns: Body, is_interview]
+    D --> E[Remove Empty Values]
+    E --> F[Preprocess Text Data]
+    
+    F --> G[TextPreprocessor]
+    G --> H[Convert to Lowercase]
+    H --> I[Remove Special Characters]
+    I --> J[Remove Extra Whitespaces]
+    J --> K[Convert Labels: Yes=1, No=0]
+    
+    K --> L[Split Data: Train/Test 80/20]
+    L --> M[Create TF-IDF Vectorizer]
+    M --> N[Configure Vectorizer Parameters]
+    N --> O[max_features: 5000<br/>ngram_range: 1,2<br/>min_df: 2<br/>max_df: 0.95<br/>stop_words: english]
+    
+    O --> P[Fit Vectorizer on Training Data]
+    P --> Q[Transform Training & Test Data]
+    Q --> R{Use SMOTE?}
+    
+    R -->|Yes| S[Apply SMOTE Oversampling]
+    R -->|No| T[Train Logistic Regression Model]
+    S --> T
+    
+    T --> U[Model Configuration:<br/>class_weight: balanced<br/>max_iter: 1000<br/>C: 1.0]
+    U --> V[Fit Model on Training Data]
+    
+    V --> W[Evaluate Model Performance]
+    W --> X[Calculate Metrics:<br/>Accuracy, Precision, Recall, F1]
+    X --> Y[Generate Confusion Matrix]
+    Y --> Z[Perform 5-Fold Cross Validation]
+    
+    Z --> AA[Save Model & Metadata]
+    AA --> BB[Save classifier.pkl]
+    BB --> CC[Save vectorizer.pkl]
+    CC --> DD[Save metadata.json]
+    
+    DD --> EE[Training Complete]
+    
+    style A fill:#e1f5fe
+    style EE fill:#c8e6c9
+    style T fill:#fff3e0
+    style W fill:#f3e5f5
+    style AA fill:#e8f5e8
+```
+
 ### Text Preprocessing
 1. **Lowercase conversion**
 2. **Remove special characters** (keep alphanumeric and spaces)
@@ -144,6 +195,198 @@ POST /v1/predict
 - **Cross-validation**: 5-fold CV
 - **Metrics**: Precision, Recall, F1-score for both classes
 - **Focus**: High recall for interview class (avoid missing interview emails)
+
+### Data Augmentation Strategy for Improved Accuracy
+
+```mermaid
+flowchart TD
+    A[Current Dataset: 100 samples] --> B[Class Imbalance: 25 Yes, 75 No]
+    B --> C[Data Augmentation Strategies]
+    
+    C --> D[Text Augmentation]
+    C --> E[SMOTE Oversampling]
+    C --> F[Data Collection]
+    
+    D --> D1[Synonym Replacement]
+    D --> D2[Back Translation]
+    D --> D3[Paraphrasing]
+    D --> D4[Word Shuffling]
+    
+    E --> E1[Synthetic Minority Oversampling]
+    E --> E2[Generate Synthetic Interview Emails]
+    E --> E3[Balance Class Distribution]
+    
+    F --> F1[Collect More Interview Emails]
+    F --> F2[Web Scraping Job Sites]
+    F --> F3[Email Templates]
+    F --> F4[User Feedback Integration]
+    
+    D1 --> G[Enhanced Training Data]
+    D2 --> G
+    D3 --> G
+    D4 --> G
+    E1 --> G
+    E2 --> G
+    E3 --> G
+    F1 --> G
+    F2 --> G
+    F3 --> G
+    F4 --> G
+    
+    G --> H[Retrain Model]
+    H --> I[Improved Accuracy]
+    
+    style A fill:#ffebee
+    style B fill:#ffebee
+    style G fill:#e8f5e8
+    style I fill:#c8e6c9
+```
+
+### Model Performance Optimization Pipeline
+
+```mermaid
+flowchart TD
+    A[Baseline Model: 100% Accuracy] --> B[Performance Analysis]
+    B --> C[Identify Improvement Areas]
+    
+    C --> D[Feature Engineering]
+    C --> E[Model Selection]
+    C --> F[Hyperparameter Tuning]
+    C --> G[Ensemble Methods]
+    
+    D --> D1[Add Email Metadata Features]
+    D --> D2[Sentiment Analysis Features]
+    D --> D3[Named Entity Recognition]
+    D --> D4[Email Structure Analysis]
+    
+    E --> E1[Random Forest]
+    E --> E2[SVM with RBF Kernel]
+    E --> E3[Gradient Boosting]
+    E --> E4[Neural Networks]
+    
+    F --> F1[Grid Search CV]
+    F --> F2[Random Search CV]
+    F --> F3[Bayesian Optimization]
+    
+    G --> G1[Voting Classifier]
+    G --> G2[Stacking]
+    G --> G3[Bagging]
+    
+    D1 --> H[Enhanced Feature Set]
+    D2 --> H
+    D3 --> H
+    D4 --> H
+    E1 --> H
+    E2 --> H
+    E3 --> H
+    E4 --> H
+    F1 --> H
+    F2 --> H
+    F3 --> H
+    G1 --> H
+    G2 --> H
+    G3 --> H
+    
+    H --> I[Cross-Validation]
+    I --> J[Performance Metrics]
+    J --> K{Accuracy Improved?}
+    
+    K -->|Yes| L[Deploy New Model]
+    K -->|No| M[Try Different Approach]
+    M --> C
+    
+    L --> N[Monitor Production Performance]
+    N --> O[Collect Feedback]
+    O --> P[Continuous Improvement]
+    
+    style A fill:#e1f5fe
+    style H fill:#fff3e0
+    style L fill:#c8e6c9
+    style P fill:#e8f5e8
+```
+
+### Training Model workflow
+
+#### 1. Data Loading & Validation
+- Load CSV data with validation for required columns (`Body`, `is_interview`)
+- Remove empty values and validate data format
+- Log data distribution and class imbalance
+
+#### 2. Text Preprocessing Pipeline
+- **TextPreprocessor** class handles:
+  - Convert to lowercase
+  - Remove special characters (keep alphanumeric and spaces)
+  - Remove extra whitespaces
+  - Convert labels: Yes=1, No=0
+
+#### 3. Feature Engineering
+- **TF-IDF Vectorizer** with parameters:
+  - `max_features=5000`: Limit number of features
+  - `ngram_range=(1,2)`: Unigrams and bigrams
+  - `min_df=2`: Minimum document frequency
+  - `max_df=0.95`: Maximum document frequency
+  - `stop_words='english'`: Remove English stop words
+
+#### 4. Model Training
+- **Logistic Regression** with:
+  - `class_weight='balanced'`: Handle class imbalance
+  - `max_iter=1000`: Maximum iterations
+  - `C=1.0`: Regularization parameter
+  - `random_state=42`: Reproducibility
+
+#### 5. Evaluation & Validation
+- Train/Test split: 80/20
+- 5-fold cross-validation
+- Comprehensive metrics: Accuracy, Precision, Recall, F1-score
+- Confusion matrix analysis
+
+#### 6. Model Persistence
+- Save trained model: `classifier.pkl`
+- Save vectorizer: `vectorizer.pkl`
+- Save metadata: `metadata.json` with training info
+
+### Strategies for Model Improvement
+
+#### Data Augmentation Approaches
+1. **Text Augmentation**:
+   - Synonym replacement
+   - Back translation
+   - Paraphrasing
+   - Word shuffling
+
+2. **SMOTE Oversampling**:
+   - Generate synthetic minority samples
+   - Balance class distribution
+   - Improve model generalization
+
+3. **Data Collection**:
+   - Collect more interview emails
+   - Web scraping job sites
+   - Email templates
+   - User feedback integration
+
+#### Advanced Model Techniques
+1. **Feature Engineering**:
+   - Email metadata features (sender, subject, time)
+   - Sentiment analysis features
+   - Named Entity Recognition
+   - Email structure analysis
+
+2. **Model Selection**:
+   - Random Forest with balanced weights
+   - SVM with RBF kernel
+   - Gradient Boosting
+   - Neural Networks
+
+3. **Hyperparameter Optimization**:
+   - Grid Search Cross-Validation
+   - Random Search CV
+   - Bayesian Optimization
+
+4. **Ensemble Methods**:
+   - Voting Classifier
+   - Stacking
+   - Bagging
 
 ## Project Structure (FastAPI Best Practices)
 
