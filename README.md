@@ -247,24 +247,34 @@ source venv/bin/activate  # macOS/Linux
 pip install -r requirements.txt
 ```
 
-### 2. Train Model
+### 2. Download NLTK Data
+Download required NLTK data packages for text preprocessing:
+```bash
+python scripts/download_nltk_data.py
+```
+This script downloads:
+- `punkt` tokenizer for sentence tokenization
+- `punkt_tab` for newer NLTK versions
+- `stopwords` for removing common words
+
+### 3. Train Model
 ```bash
 python scripts/train.py data/Interview_vs_Non-Interview_Training_Emails__100_rows_.csv
 ```
 
-### 3. Start Service
+### 4. Start Service
 ```bash
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-### 4. Test API
+### 5. Test API
 ```bash
 curl -X POST "http://localhost:8000/v1/predict" \
      -H "Content-Type: application/json" \
      -d '{"email_body": "We would like to schedule a phone interview with you"}'
 ```
 
-### 5. API Documentation
+### 6. API Documentation
 Access: `http://localhost:8000/docs` (Swagger UI)
 
 ## Performance Expectations

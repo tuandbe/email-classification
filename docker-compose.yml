@@ -23,14 +23,14 @@ services:
       start_period: 40s
 
   # Optional: Add a reverse proxy
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-    depends_on:
-      - email-classification
-    restart: unless-stopped
-    profiles:
-      - production
+  # nginx:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "80:80"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #   depends_on:
+  #     - email-classification
+  #   restart: unless-stopped
+  #   profiles:
+  #     - production

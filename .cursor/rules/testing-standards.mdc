@@ -1,8 +1,8 @@
 ---
-globs: test_*.py,*_test.py
 description: Testing standards and patterns for FastAPI applications
+globs: test_*.py
+alwaysApply: false
 ---
-
 # Testing Standards for FastAPI
 
 ## Test Structure
