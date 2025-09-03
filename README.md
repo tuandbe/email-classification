@@ -13,7 +13,7 @@ This is a lightweight service for classifying emails to determine if they are in
 
 ### Technical Constraints
 - Python-based solution
-- Use local machine learning libraries (scikit-learn, etc.)
+- Use local machine learning libraries (scikit-learn)
 - Model saved and loaded from local storage
 
 ## Data Analysis
@@ -305,90 +305,7 @@ flowchart TD
     style P fill:#e8f5e8
 ```
 
-### Training Model workflow
-
-#### 1. Data Loading & Validation
-- Load CSV data with validation for required columns (`Body`, `is_interview`)
-- Remove empty values and validate data format
-- Log data distribution and class imbalance
-
-#### 2. Text Preprocessing Pipeline
-- **TextPreprocessor** class handles:
-  - Convert to lowercase
-  - Remove special characters (keep alphanumeric and spaces)
-  - Remove extra whitespaces
-  - Convert labels: Yes=1, No=0
-
-#### 3. Feature Engineering
-- **TF-IDF Vectorizer** with parameters:
-  - `max_features=5000`: Limit number of features
-  - `ngram_range=(1,2)`: Unigrams and bigrams
-  - `min_df=2`: Minimum document frequency
-  - `max_df=0.95`: Maximum document frequency
-  - `stop_words='english'`: Remove English stop words
-
-#### 4. Model Training
-- **Logistic Regression** with:
-  - `class_weight='balanced'`: Handle class imbalance
-  - `max_iter=1000`: Maximum iterations
-  - `C=1.0`: Regularization parameter
-  - `random_state=42`: Reproducibility
-
-#### 5. Evaluation & Validation
-- Train/Test split: 80/20
-- 5-fold cross-validation
-- Comprehensive metrics: Accuracy, Precision, Recall, F1-score
-- Confusion matrix analysis
-
-#### 6. Model Persistence
-- Save trained model: `classifier.pkl`
-- Save vectorizer: `vectorizer.pkl`
-- Save metadata: `metadata.json` with training info
-
-### Strategies for Model Improvement
-
-#### Data Augmentation Approaches
-1. **Text Augmentation**:
-   - Synonym replacement
-   - Back translation
-   - Paraphrasing
-   - Word shuffling
-
-2. **SMOTE Oversampling**:
-   - Generate synthetic minority samples
-   - Balance class distribution
-   - Improve model generalization
-
-3. **Data Collection**:
-   - Collect more interview emails
-   - Web scraping job sites
-   - Email templates
-   - User feedback integration
-
-#### Advanced Model Techniques
-1. **Feature Engineering**:
-   - Email metadata features (sender, subject, time)
-   - Sentiment analysis features
-   - Named Entity Recognition
-   - Email structure analysis
-
-2. **Model Selection**:
-   - Random Forest with balanced weights
-   - SVM with RBF kernel
-   - Gradient Boosting
-   - Neural Networks
-
-3. **Hyperparameter Optimization**:
-   - Grid Search Cross-Validation
-   - Random Search CV
-   - Bayesian Optimization
-
-4. **Ensemble Methods**:
-   - Voting Classifier
-   - Stacking
-   - Bagging
-
-## Project Structure (FastAPI Best Practices)
+## Project Structure
 
 ```
 email-classification/
