@@ -40,6 +40,8 @@ Expected response:
   "confidence": 0.85
 }
 ```
+<img alt="image" src="https://github.com/user-attachments/assets/0a89d699-9458-4c3d-914b-5e5ba0c624de" />
+
 
 ## Retrain with Different CSV
 
