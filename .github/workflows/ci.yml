@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
+        pip install -e . --force-reinstall
         pip install -r requirements.txt
         
     - name: Run Black (Code Formatting)
@@ -48,7 +48,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
+        pip install -e . --force-reinstall
         pip install -r requirements.txt
         
     - name: Download NLTK data
@@ -59,13 +59,24 @@ jobs:
       run: |
         python debug_detailed.py
         
+    - name: Verify Python path and package
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Python path:"
+        python -c "import sys; print('\n'.join(sys.path))"
+        echo "Package installation check:"
+        python -c "import importlib.metadata; print([d.metadata['name'] for d in importlib.metadata.distributions() if 'email' in d.metadata['name'].lower()])"
+        echo "App directory contents:"
+        ls -la app/
+        echo "Models directory contents:"
+        ls -la app/models/
+        
     - name: Test models import isolation
       run: |
-        python test_models_import.py
+        python -m test_models_import
         
     - name: Run tests
       run: |
-        cd ${{ github.workspace }}
         python -m pytest tests/ -v --tb=short
       env:
         PYTHONPATH: ${{ github.workspace }}
@@ -86,7 +97,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e .
+        pip install -e . --force-reinstall
         pip install -r requirements.txt
         
     - name: Download NLTK data
