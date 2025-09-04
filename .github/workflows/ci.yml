@@ -55,9 +55,24 @@ jobs:
       run: |
         python scripts/download_nltk_data.py
         
+    - name: Debug Python environment
+      run: |
+        echo "Python version:"
+        python --version
+        echo "Python path:"
+        python -c "import sys; print('\n'.join(sys.path))"
+        echo "Current directory:"
+        pwd
+        echo "Directory contents:"
+        ls -la
+        echo "App directory contents:"
+        ls -la app/
+        echo "Testing import:"
+        python -c "import app; print('App import successful')"
+        
     - name: Run tests
       run: |
-        pytest tests/ -v
+        python -m pytest tests/ -v
       env:
         PYTHONPATH: ${{ github.workspace }}
 
