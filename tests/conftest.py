@@ -8,12 +8,36 @@ from pathlib import Path
 from unittest.mock import Mock, AsyncMock
 
 import sys
+import importlib.util
 
-sys.path.append(str(Path(__file__).parent.parent))
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
 
-from app.core.config import settings
-from app.models.ml_model import MLModelManager
-from app.services.preprocessing import TextPreprocessor
+# Try to import modules with fallback
+try:
+    from app.core.config import settings
+    from app.models.ml_model import MLModelManager
+    from app.services.preprocessing import TextPreprocessor
+except ImportError as e:
+    # If import fails, try alternative approach
+    print(f"Import error: {e}")
+    print(f"Python path: {sys.path}")
+    print(f"Project root: {project_root}")
+    print(f"Project root exists: {project_root.exists()}")
+    
+    # Try to import using importlib
+    try:
+        spec = importlib.util.spec_from_file_location("app", project_root / "app" / "__init__.py")
+        app_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(app_module)
+        
+        from app.core.config import settings
+        from app.models.ml_model import MLModelManager
+        from app.services.preprocessing import TextPreprocessor
+    except Exception as e2:
+        print(f"Alternative import also failed: {e2}")
+        raise e
 
 
 @pytest.fixture
