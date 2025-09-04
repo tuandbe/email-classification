@@ -57,18 +57,7 @@ jobs:
         
     - name: Debug Python environment
       run: |
-        echo "Python version:"
-        python --version
-        echo "Python path:"
-        python -c "import sys; print('\n'.join(sys.path))"
-        echo "Current directory:"
-        pwd
-        echo "Directory contents:"
-        ls -la
-        echo "App directory contents:"
-        ls -la app/
-        echo "Testing import:"
-        python -c "import app; print('App import successful')"
+        python debug_import.py
         
     - name: Run tests
       run: |
