@@ -129,7 +129,6 @@ dmypy.json
 .pyre/
 
 # Project specific
-models/
 logs/
 *.pkl
 *.joblib
