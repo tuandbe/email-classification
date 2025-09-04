@@ -188,3 +188,35 @@ flowchart TD
     style G fill:#e8f5e8
     style I fill:#c8e6c9
 ```
+
+## CI Pipeline
+
+This project includes a simple CI pipeline using GitHub Actions that runs on every pull request to the main branch.
+
+### Pipeline Features
+- **Code Quality**: Black formatting and Flake8 linting
+- **Testing**: Unit tests
+- **Model Validation**: Model training test
+
+### Test CI Locally
+
+```bash
+# Run CI checks locally
+python scripts/test_ci.py
+```
+
+### Manual Commands
+
+```bash
+# Code formatting
+black app/ scripts/ tests/
+
+# Linting
+flake8 app/ scripts/ tests/ --max-line-length=88 --extend-ignore=E203,W503
+
+# Run tests
+pytest tests/ -v
+
+# Train model
+python scripts/train.py data/Interview_vs_Non-Interview_Training_Emails__100_rows_.csv
+```

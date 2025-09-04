@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import Mock, AsyncMock
 
 import sys
+
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.core.config import settings
@@ -27,14 +28,12 @@ def mock_model_manager():
     """Create a mock ML model manager."""
     manager = Mock(spec=MLModelManager)
     manager.is_loaded.return_value = True
-    manager.predict = AsyncMock(return_value={
-        "is_interview": "Yes",
-        "confidence": 0.85
-    })
-    manager.get_model_info = AsyncMock(return_value={
-        "model_type": "LogisticRegression",
-        "accuracy": 0.89
-    })
+    manager.predict = AsyncMock(
+        return_value={"is_interview": "Yes", "confidence": 0.85}
+    )
+    manager.get_model_info = AsyncMock(
+        return_value={"model_type": "LogisticRegression", "accuracy": 0.89}
+    )
     return manager
 
 
@@ -45,7 +44,7 @@ def sample_email_data():
         "interview_email": "We'd love to schedule a 30-minute video conversation to learn more about your experience and discuss the role in detail.",
         "non_interview_email": "Thank you for your application. We have received your resume and will review it carefully.",
         "security_code_email": "Your verification code is 123456. Please enter this code to verify your account.",
-        "rejection_email": "Thank you for your interest in our company. Unfortunately, we have decided not to proceed with your application at this time."
+        "rejection_email": "Thank you for your interest in our company. Unfortunately, we have decided not to proceed with your application at this time.",
     }
 
 
