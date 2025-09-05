@@ -1,0 +1,117 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+        
+    - name: Run Black (Code Formatting)
+      run: |
+        black --check --diff app/ scripts/ tests/
+        
+    - name: Run Flake8 (Linting)
+      run: |
+        flake8 app/ scripts/ tests/ --max-line-length=88 --extend-ignore=E203,W503,E501,F401,E402,F841,F541,W293
+
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+        
+    - name: Download NLTK data
+      run: |
+        python scripts/download_nltk_data.py
+        
+    - name: Run tests
+      run: |
+        python -m pytest tests/ -v --tb=short
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+
+  model-test:
+    name: Model Training Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.13'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -e .
+        
+    - name: Download NLTK data
+      run: |
+        python scripts/download_nltk_data.py
+        
+    - name: Train model
+      run: |
+        python scripts/train.py data/Interview_vs_Non-Interview_Training_Emails__100_rows_.csv
+      env:
+        PYTHONPATH: ${{ github.workspace }}
+        
+    - name: Test model files
+      run: |
+        python -c "
+        import joblib
+        import json
+        from pathlib import Path
+        
+        # Check model files exist
+        model_path = Path('models/classifier.pkl')
+        vectorizer_path = Path('models/vectorizer.pkl')
+        metadata_path = Path('models/metadata.json')
+        
+        assert model_path.exists(), 'Model file not found'
+        assert vectorizer_path.exists(), 'Vectorizer file not found'
+        assert metadata_path.exists(), 'Metadata file not found'
+        
+        # Try to load model files
+        model = joblib.load(model_path)
+        vectorizer = joblib.load(vectorizer_path)
+        metadata = json.load(open(metadata_path))
+        
+        print('✅ Model validation successful')
+        print(f'Model type: {type(model).__name__}')
+        print(f'Accuracy: {metadata.get(\"performance_metrics\", {}).get(\"accuracy\", \"Unknown\")}')
+        "

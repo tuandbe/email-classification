@@ -11,35 +11,29 @@ class HealthResponse(BaseModel):
     """
     Response schema for health check endpoint.
     """
+
     status: str = Field(
         ...,
         description="Service status: 'healthy', 'degraded', or 'unhealthy'",
-        example="healthy"
+        example="healthy",
     )
     model_loaded: bool = Field(
-        ...,
-        description="Whether the ML model is loaded and ready",
-        example=True
+        ..., description="Whether the ML model is loaded and ready", example=True
     )
-    version: str = Field(
-        ...,
-        description="Service version",
-        example="1.0.0"
-    )
+    version: str = Field(..., description="Service version", example="1.0.0")
     uptime: Optional[str] = Field(
-        None,
-        description="Service uptime",
-        example="2h 30m 15s"
+        None, description="Service uptime", example="2h 30m 15s"
     )
-    
+
     class Config:
         """Pydantic config."""
+
         json_schema_extra = {
             "example": {
                 "status": "healthy",
                 "model_loaded": True,
                 "version": "1.0.0",
-                "uptime": "2h 30m 15s"
+                "uptime": "2h 30m 15s",
             }
         }
 
@@ -48,10 +42,9 @@ class ModelInfoResponse(BaseModel):
     """
     Response schema for model information endpoint.
     """
+
     model_loaded: bool = Field(
-        ...,
-        description="Whether the ML model is loaded",
-        example=True
+        ..., description="Whether the ML model is loaded", example=True
     )
     model_info: Optional[Dict[str, Any]] = Field(
         None,
@@ -64,12 +57,13 @@ class ModelInfoResponse(BaseModel):
             "recall": 0.91,
             "f1_score": 0.89,
             "feature_count": 5000,
-            "training_samples": 100
-        }
+            "training_samples": 100,
+        },
     )
-    
+
     class Config:
         """Pydantic config."""
+
         json_schema_extra = {
             "example": {
                 "model_loaded": True,
@@ -81,7 +75,7 @@ class ModelInfoResponse(BaseModel):
                     "recall": 0.91,
                     "f1_score": 0.89,
                     "feature_count": 5000,
-                    "training_samples": 100
-                }
+                    "training_samples": 100,
+                },
             }
         }

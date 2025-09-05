@@ -32,21 +32,21 @@ model_manager: MLModelManager = None
 async def lifespan(app: FastAPI):
     """
     Application lifespan manager.
-    
+
     Handles startup and shutdown events.
     """
     global model_manager
-    
+
     # Startup
     logging.info("Starting Email Interview Classification Service...")
-    
+
     # Setup logging
     setup_logging()
     logger = structlog.get_logger()
-    
+
     # Ensure directories exist
     settings.ensure_directories()
-    
+
     # Initialize model manager
     try:
         model_manager = MLModelManager()
@@ -56,11 +56,11 @@ async def lifespan(app: FastAPI):
         logger.error("Failed to load model", error=str(e))
         # Don't fail startup if model is not available
         model_manager = None
-    
+
     logger.info("Application startup completed")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down application...")
     if model_manager:
@@ -98,7 +98,7 @@ async def log_requests(request: Request, call_next):
     Log all HTTP requests and responses.
     """
     start_time = time.time()
-    
+
     # Log request
     logger = structlog.get_logger()
     logger.info(
@@ -107,13 +107,13 @@ async def log_requests(request: Request, call_next):
         url=str(request.url),
         client_ip=get_remote_address(request),
     )
-    
+
     # Process request
     response = await call_next(request)
-    
+
     # Calculate processing time
     process_time = time.time() - start_time
-    
+
     # Log response
     logger.info(
         "Request completed",
@@ -122,16 +122,12 @@ async def log_requests(request: Request, call_next):
         status_code=response.status_code,
         process_time=f"{process_time:.4f}s",
     )
-    
+
     return response
 
 
 # Include routers
-app.include_router(
-    predictions.router,
-    prefix="/v1",
-    tags=["predictions"]
-)
+app.include_router(predictions.router, prefix="/v1", tags=["predictions"])
 
 
 @app.get("/")
@@ -144,7 +140,7 @@ async def root():
         "version": settings.app_version,
         "status": "running",
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
     }
 
 
@@ -154,12 +150,12 @@ async def health_check():
     Health check endpoint.
     """
     model_loaded = model_manager is not None and model_manager.is_loaded()
-    
+
     return {
         "status": "healthy" if model_loaded else "degraded",
         "model_loaded": model_loaded,
         "version": settings.app_version,
-        "uptime": "N/A"  # Could be implemented with startup time tracking
+        "uptime": "N/A",  # Could be implemented with startup time tracking
     }
 
 
@@ -168,11 +164,11 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    
+
     uvicorn.run(
         "app.main:app",
         host=settings.host,
         port=settings.port,
         reload=settings.debug,
-        log_level=settings.log_level.lower()
+        log_level=settings.log_level.lower(),
     )

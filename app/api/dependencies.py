@@ -19,7 +19,7 @@ limiter = Limiter(key_func=get_remote_address)
 def get_rate_limiter() -> Limiter:
     """
     Get rate limiter instance.
-    
+
     Returns:
         Limiter instance
     """
@@ -29,13 +29,13 @@ def get_rate_limiter() -> Limiter:
 def validate_email_input(email_body: str) -> str:
     """
     Validate email input for prediction endpoints.
-    
+
     Args:
         email_body: Email body text
-        
+
     Returns:
         Validated email body
-        
+
     Raises:
         HTTPException: If validation fails
     """

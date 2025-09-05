@@ -129,7 +129,6 @@ dmypy.json
 .pyre/
 
 # Project specific
-models/
 logs/
 *.pkl
 *.joblib
@@ -156,3 +155,20 @@ Thumbs.db
 *.temp
 temp/
 tmp/
+
+# CI/CD and security reports
+bandit-report.json
+safety-report.json
+coverage.xml
+htmlcov/
+
+# Pre-commit
+.pre-commit-config.yaml.bak
+
+# Docker
+.dockerignore.bak
+
+# Local development
+.env.local
+.env.development
+.env.test
