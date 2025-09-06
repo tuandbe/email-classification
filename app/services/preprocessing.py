@@ -22,29 +22,37 @@ class TextPreprocessor:
     def __init__(self):
         """Initialize the text preprocessor."""
         self._stop_words: Optional[set] = None
-        self._download_nltk_data()
+        self._validate_nltk_data()
 
-    def _download_nltk_data(self) -> None:
-        """Download required NLTK data."""
+    def _validate_nltk_data(self) -> None:
+        """Validate that required NLTK data is available."""
         try:
+            # Check if punkt tokenizer is available
             nltk.data.find("tokenizers/punkt")
+            logger.debug("NLTK punkt tokenizer is available")
         except LookupError:
-            logger.info("Downloading NLTK punkt tokenizer...")
-            nltk.download("punkt", quiet=True)
+            logger.error("NLTK punkt tokenizer not found. Please ensure NLTK data was downloaded during build time.")
+            raise RuntimeError("NLTK punkt tokenizer not available. Check Docker build process.")
 
         try:
+            # Check if stopwords are available
             nltk.data.find("corpora/stopwords")
+            logger.debug("NLTK stopwords are available")
         except LookupError:
-            logger.info("Downloading NLTK stopwords...")
-            nltk.download("stopwords", quiet=True)
+            logger.error("NLTK stopwords not found. Please ensure NLTK data was downloaded during build time.")
+            raise RuntimeError("NLTK stopwords not available. Check Docker build process.")
 
     def _get_stop_words(self) -> set:
         """Get English stop words."""
         if self._stop_words is None:
             try:
                 self._stop_words = set(stopwords.words("english"))
-            except LookupError:
-                logger.warning("NLTK stopwords not available, using empty set")
+                logger.debug(f"Loaded {len(self._stop_words)} English stop words")
+            except LookupError as e:
+                logger.error(f"NLTK stopwords not available: {e}. Using empty set.")
+                self._stop_words = set()
+            except Exception as e:
+                logger.error(f"Unexpected error loading stop words: {e}. Using empty set.")
                 self._stop_words = set()
         return self._stop_words
 
@@ -106,9 +114,10 @@ class TextPreprocessor:
             stop_words = self._get_stop_words()
             filtered_tokens = [token for token in tokens if token not in stop_words]
 
+            logger.debug(f"Removed stop words: {len(tokens) - len(filtered_tokens)} tokens removed")
             return " ".join(filtered_tokens)
         except Exception as e:
-            logger.warning("Failed to remove stop words", error=str(e))
+            logger.warning(f"Failed to remove stop words: {e}. Returning original text.")
             return text
 
     def preprocess(self, text: str, remove_stop_words: bool = True) -> str:
@@ -165,7 +174,7 @@ class TextPreprocessor:
             return [word for word, freq in sorted_words[:top_n]]
 
         except Exception as e:
-            logger.warning("Failed to extract keywords", error=str(e))
+            logger.warning(f"Failed to extract keywords: {e}")
             return []
 
     def get_text_features(self, text: str) -> dict:

@@ -146,19 +146,73 @@ build_and_push_images() {
     log_info "Logging in to ECR..."
     aws ecr get-login-password --region $AWS_REGION --profile $AWS_PROFILE | docker login --username AWS --password-stdin $ECR_REGISTRY
     
+    # Generate timestamp tag for unique image version
+    TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+    
     # Build main application image
-    log_info "Building main application image..."
+    log_info "Building main application image with timestamp: $TIMESTAMP"
+    docker build -t $PROJECT_NAME:$TIMESTAMP .
     docker build -t $PROJECT_NAME:latest .
     
     # Tag image for ECR
     log_info "Tagging image for ECR..."
+    docker tag $PROJECT_NAME:$TIMESTAMP $ECR_REPOSITORY_URI:$TIMESTAMP
     docker tag $PROJECT_NAME:latest $ECR_REPOSITORY_URI:latest
     
     # Push image to ECR
     log_info "Pushing image to ECR..."
+    docker push $ECR_REPOSITORY_URI:$TIMESTAMP
     docker push $ECR_REPOSITORY_URI:latest
     
+    log_info "Image pushed with tags: $TIMESTAMP and latest"
+    
     log_info "Docker images built and pushed successfully!"
+}
+
+force_update_ecs_service() {
+    log_info "Force updating ECS service to use new image..."
+    
+    # Get cluster and service names from Terraform outputs
+    CLUSTER_NAME=$(cd "$PROJECT_DIR" && terraform output -raw ecs_cluster_name 2>/dev/null || echo "email-classification-cluster")
+    SERVICE_NAME=$(cd "$PROJECT_DIR" && terraform output -raw ecs_service_name 2>/dev/null || echo "email-classification-service")
+    
+    if [ -z "$CLUSTER_NAME" ] || [ -z "$SERVICE_NAME" ]; then
+        log_error "Could not determine cluster or service name. Please check Terraform outputs."
+        return 1
+    fi
+    
+    log_info "Updating ECS service: $SERVICE_NAME in cluster: $CLUSTER_NAME"
+    
+    # Force new deployment
+    aws ecs update-service \
+        --cluster "$CLUSTER_NAME" \
+        --service "$SERVICE_NAME" \
+        --force-new-deployment \
+        --region "$AWS_REGION" \
+        --profile "$AWS_PROFILE" \
+        --query 'service.serviceName' \
+        --output text
+    
+    if [ $? -eq 0 ]; then
+        log_info "ECS service update initiated successfully!"
+        log_info "Waiting for service to stabilize..."
+        
+        # Wait for service to stabilize
+        aws ecs wait services-stable \
+            --cluster "$CLUSTER_NAME" \
+            --services "$SERVICE_NAME" \
+            --region "$AWS_REGION" \
+            --profile "$AWS_PROFILE"
+        
+        if [ $? -eq 0 ]; then
+            log_info "ECS service is now stable and running with new image!"
+        else
+            log_warning "ECS service update completed but may not be fully stable yet."
+        fi
+    else
+        log_error "Failed to update ECS service"
+        return 1
+    fi
 }
 
 show_outputs() {
@@ -224,9 +278,14 @@ case "${1:-deploy}" in
     "images-only")
         check_prerequisites
         build_and_push_images
+        force_update_ecs_service
+        ;;
+    "update-ecs")
+        check_prerequisites
+        force_update_ecs_service
         ;;
     *)
-        echo "Usage: $0 {deploy|destroy|init-only|project-only|images-only}"
+        echo "Usage: $0 {deploy|destroy|init-only|project-only|images-only|update-ecs}"
         echo ""
         echo "Commands:"
         echo "  deploy       - Deploy complete infrastructure (default)"
@@ -234,6 +293,7 @@ case "${1:-deploy}" in
         echo "  init-only    - Deploy only init infrastructure"
         echo "  project-only - Deploy only project infrastructure"
         echo "  images-only  - Build and push Docker images only"
+        echo "  update-ecs   - Force update ECS service to use latest image"
         exit 1
         ;;
 esac
