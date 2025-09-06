@@ -1,0 +1,7 @@
+# Trivy ignore file for Terraform
+# Add specific rules to ignore here
+
+# Ignore specific check IDs if needed
+# Example:
+# #avd-aws-0001
+# #avd-aws-0002
