@@ -9,7 +9,7 @@ The infrastructure includes:
 - **VPC**: Virtual Private Cloud with public and private subnets
 - **ECS**: Elastic Container Service with EC2 instances (t4g.small)
 - **ECR**: Elastic Container Registry for Docker images
-- **Route53**: DNS management for domain `dev.mie.best`
+- **Route53**: DNS management for domain `example.com`
 
 ## Project Structure
 
@@ -64,12 +64,12 @@ docker build -t email-classification:latest .
 # Build nginx image
 docker build -f Dockerfile.nginx -t email-classification-nginx:latest .
 
-# Get ECR login token
-aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com
+# Get ECR login token (replace with your actual AWS account ID and region)
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 123456789012.dkr.ecr.us-east-1.amazonaws.com
 
 # Tag and push images
-docker tag email-classification:latest <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/email-classification:latest
-docker push <account-id>.dkr.ecr.ap-northeast-1.amazonaws.com/email-classification:latest
+docker tag email-classification:latest 123456789012.dkr.ecr.us-east-1.amazonaws.com/email-classification:latest
+docker push 123456789012.dkr.ecr.us-east-1.amazonaws.com/email-classification:latest
 ```
 
 ## Configuration
@@ -89,7 +89,7 @@ Update the S3 bucket name in `versions.tf` files:
 ```hcl
 backend "s3" {
   bucket = "your-terraform-state-bucket"
-  region = "ap-northeast-1"
+  region = "us-east-1"
   key    = "terraform/accounts/account_dev/email_classification/terraform.tfstate"
 }
 ```
@@ -98,7 +98,7 @@ backend "s3" {
 
 After deployment, you'll get:
 
-- API URL: `https://api.ai.demo.dev.mie.best`
+- API URL: `https://api.example.com`
 - ECR repository URLs
 - ECS cluster information
 - Route53 hosted zone details

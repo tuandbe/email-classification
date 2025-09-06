@@ -16,7 +16,7 @@ variable "domain_name" {
 }
 
 variable "api_subdomain" {
-  description = "The API subdomain (e.g., api.ai.demo.dev.mie.best)"
+  description = "The API subdomain (e.g., api.example.com)"
   type        = string
 }
 

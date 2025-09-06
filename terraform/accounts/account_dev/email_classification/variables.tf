@@ -126,13 +126,13 @@ variable "container_environment" {
 variable "domain_name" {
   description = "The domain name for the hosted zone"
   type        = string
-  default     = "dev.mie.best"
+  default     = "example.com"
 }
 
 variable "api_subdomain" {
   description = "The API subdomain"
   type        = string
-  default     = "api.ai.demo.dev.mie.best"
+  default     = "api.example.com"
 }
 
 variable "dns_ttl" {
