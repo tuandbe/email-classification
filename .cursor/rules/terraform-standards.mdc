@@ -1,0 +1,300 @@
+---
+globs: *.tf,*.tfvars,*.hcl
+description: Terraform coding standards and best practices for infrastructure as code
+---
+
+# Terraform Standards and Best Practices
+
+## Repository Structure
+
+Follow this basic repository structure. 
+```
+.
+├── .gitattributes
+├── .github
+├── .gitignore
+├── renovate.json5
+└── terraform
+    ├── .terraform-version  # Terraform version
+    ├── .tflint.hcl         # TFLint configuration
+    ├── .trivyignore        # Trivy ignore file
+    ├── accounts            # Directory containing configurations for accounts/environments
+    │   ├── account_dev     # Development environment
+    │   │   ├── common      # Common configuration for dev environment
+    │   │   │   ├── main.tf
+    │   │   │   ├── outputs.tf
+    │   │   │   ├── variables.tf
+    │   │   │   └── versions.tf
+    │   │   ├── init        # Initialization configuration (e.g., S3 backend)
+    │   │   │   ├── main.tf
+    │   │   │   ├── outputs.tf
+    │   │   │   ├── terraform.tfstate       # State file (note: should not be committed)
+    │   │   │   ├── terraform.tfstate.backup # Backup state file (note: should not be committed)
+    │   │   │   ├── variables.tf
+    │   │   │   └── versions.tf
+    │   │   └── project_a   # Configuration for project A in dev environment
+    │   │       ├── main.tf
+    │   │       ├── outputs.tf
+    │   │       ├── variables.tf
+    │   │       └── versions.tf
+    │   ├── account_prod    # Production environment
+    │   │   ├── init
+    │   │   │   ├── ...
+    │   │   └── project_a
+    │   │       ├── ...
+    │   └── account_stg     # Staging environment
+    │       ├── init
+    │       │   ├── ...
+    │       └── project_a
+    │           ├── ...
+    └── modules             # Directory containing reusable modules
+        └── iam_role        # Example: IAM role module
+            ├── main.tf
+            ├── outputs.tf
+            ├── variables.tf
+            └── version.tf  # Should have versions.tf file in module
+```
+
+## File Naming and Roles
+
+### Basic File Names
+
+Use the following file names as standard:
+
+*   `data.tf`
+*   `main.tf`
+*   `outputs.tf`
+*   `variables.tf`
+*   `versions.tf`
+
+### File Naming Rules
+
+*   **Resource file names:**
+    *   File names should be written in `snake_case.tf` format.
+    *   Basically, use singular form.
+        *   Example: `security_group.tf` (Not recommended: `security_groups.tf`)
+    *   Do not use abbreviations.
+        *   Example: `security_group.tf` (Not recommended: `sg.tf`)
+
+### File Roles
+
+*   **`data.tf`**
+    *   Data source declarations should be centralized here as much as possible.
+*   **`main.tf`**
+    *   Place for defining local variables and main resources.
+    *   ※ *Follows Standard Module Structure.*
+*   **`outputs.tf`**
+    *   Output values should be centralized here.
+    *   ※ *Follows Standard Module Structure.*
+*   **`variables.tf`**
+    *   All variable definitions should be written here.
+    *   ※ *Follows Standard Module Structure.*
+*   **`versions.tf`**
+    *   All settings for `backend`, `provider`, and `terraform` (required_version) should be written centrally *entirely* here, not split up.
+    *   Unifying with the `versions.tf` file in module structure makes management easier.
+
+## Code Validation, Lint, and Security
+
+### Code Validation
+
+*   **Validation:**
+    *   Use `terraform validate` to check code syntax and configuration.
+    *   Use `terraform plan` to validate configuration before applying changes.
+    *   Use `terraform init -upgrade` to ensure providers are up to date.
+
+### Lint and Static Code Analysis
+
+*   **Lint:**
+    *   Use TFLint to perform code linting (rule checking, style).
+    *   Configure TFLint with `.tflint.hcl` file for consistent rules.
+*   **Security scanning:**
+    *   Use Trivy to perform security scanning for Terraform code.
+    *   Use Checkov for additional security and compliance checks.
+    *   Use tfsec for Terraform-specific security analysis.
+
+## Code Formatting
+
+*   **Auto-formatting:**
+    *   Use `terraform fmt` as the basis for automatic code formatting.
+    *   Use `terraform fmt -recursive` for formatting entire directories.
+    *   Configure your IDE to run `terraform fmt` on save.
+*   **Grouping arguments:**
+    *   Argument groups within a block should be separated by blank lines to improve readability.
+    *   Group related arguments together (e.g., all networking args, all storage args).
+*   **Meta-argument position:**
+    *   Meta-arguments (e.g., `count`, `for_each`, etc.) should be written at the *beginning* of the block.
+    *   Meta-argument blocks (e.g., `lifecycle` block, `provider` block, `depends_on`, etc.) should be written at the *end* of the block.
+*   **Indentation:**
+    *   Use 2 spaces for indentation (not tabs).
+    *   Align equals signs in variable assignments for readability.
+
+```terraform
+resource "aws_instance" "example" {
+  # Meta-argument at the beginning
+  count = 2
+
+  ami           = "abc123"
+  instance_type = "t2.micro"
+
+  network_interface {
+    # ...
+  }
+
+  # Meta-argument block at the end
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+```
+
+### Resource Naming
+
+*   **Naming rules:**
+    *   Use nouns for resource names, *do not* include resource type names (e.g., `_instance`, `_sg`) or environment names (e.g., `_dev`, `_prod`).
+    *   Names should use `snake_case` format.
+    *   Use descriptive names that indicate the resource's purpose.
+    *   For multiple instances, use descriptive suffixes (e.g., `web_api_primary`, `web_api_secondary`).
+
+```terraform
+# Correct:
+resource "aws_instance" "web_api" { ... }
+resource "aws_security_group" "web_api_sg" { ... }
+resource "aws_lb" "application_load_balancer" { ... }
+
+# Incorrect:
+resource "aws_instance" "webAPI-aws-instance" { ... }
+resource "aws_instance" "web_api_dev" { ... }
+resource "aws_instance" "i1" { ... }
+```
+
+### Module Naming
+
+*   **Naming rules:**
+    *   Use nouns for module names, *do not* include environment names.
+    *   Use descriptive names that indicate the module's functionality.
+    *   Use `snake_case` format for module names.
+
+```terraform
+# Correct:
+module "alb" { ... }
+
+# Incorrect:
+module "alb_dev" { ... }
+```
+
+### Argument Order (within resources)
+
+*   **Priority order:**
+    1.  `count` or `for_each` (if present)
+    2.  Regular attributes (arguments) (not blocks)
+    3.  Argument blocks (e.g., `network_interface`, `tags`)
+    4.  `lifecycle` block
+    5.  `depends_on`
+
+## Version Pinning
+
+*   **Version pinning:**
+    *   Explicitly pin versions of dependencies (Terraform core, providers) to prevent unexpected updates and compatibility issues.
+
+```terraform
+terraform {
+  # ...
+  required_version = "1.11.2" # Specify exact Terraform version
+
+  required_providers {
+    aws = {
+      version = "5.92.0"   # Specify exact provider version
+      source  = "hashicorp/aws"
+    }
+  }
+}
+```
+
+## State Management
+
+*   **State management:**
+    *   Separate state files (`.tfstate`) for each environment or account/project. Use remote backend (e.g., AWS S3) to store state, helping to limit scope of impact and minimize risk.
+    *   Enable versioning on S3 bucket for state file backups.
+    *   Use different S3 buckets or prefixes for different environments.
+*   **State Path:**
+    *   Use repository path as the state path (`key` in backend configuration). This helps easily identify which state corresponds to which configuration.
+    *   Include environment and project information in the key path.
+*   **State Security:**
+    *   Enable server-side encryption for state files.
+    *   Use IAM policies to restrict access to state files.
+    *   Never commit state files to version control.
+
+```terraform
+terraform {
+  backend "s3" {
+    bucket       = "tfstate-123456789-ap-northeast-1" # Replace with your S3 bucket name
+    region       = "ap-northeast-1"                   # Replace with your region
+    encrypt      = true
+    # State path corresponds to directory structure in repo
+    key          = "org/repo/accounts/account_dev/project_a.tfstate"
+  }
+  # ...
+}
+```
+
+## Additional Best Practices
+
+### Comments and Documentation
+
+*   Use meaningful comments to explain complex logic
+*   Document all variables with descriptions and type information
+*   Include usage examples in module README files
+*   Document resource dependencies and relationships
+*   Use `# tflint-ignore` comments sparingly and with justification
+
+### Resource Organization
+
+*   Group related resources together in logical files
+*   Use consistent indentation (2 spaces)
+*   Keep line length reasonable (max 120 characters)
+*   Use locals for complex expressions and repeated values
+*   Organize resources by service or functionality
+
+### Security Considerations
+
+*   Never hardcode sensitive values (passwords, API keys, etc.)
+*   Use variables for all configurable values
+*   Implement least privilege access principles
+*   Regularly scan for security vulnerabilities
+*   Use AWS Secrets Manager or Parameter Store for sensitive data
+*   Enable CloudTrail logging for audit trails
+*   Use IAM roles instead of access keys when possible
+
+### Testing and Validation
+
+*   Use `terraform plan` before applying changes
+*   Implement automated testing in CI/CD pipelines
+*   Use tools like Checkov, tfsec, and Trivy for security scanning
+*   Validate configurations with `terraform validate`
+*   Use `terraform fmt -check` in CI to ensure formatting consistency
+*   Test modules in isolation before integration
+
+### Performance and Optimization
+
+*   Use `for_each` instead of `count` when possible for better resource management
+*   Avoid using `depends_on` unless absolutely necessary
+*   Use data sources instead of hardcoded values
+*   Implement proper resource tagging for cost management
+*   Use lifecycle rules to prevent accidental deletion of critical resources
+
+### Error Handling and Recovery
+
+*   Use `terraform import` carefully and document the process
+*   Implement proper backup strategies for state files
+*   Use `terraform state` commands for state management
+*   Plan for disaster recovery scenarios
+*   Document rollback procedures
+
+### Module Development
+
+*   Follow the Standard Module Structure
+*   Use semantic versioning for modules
+*   Provide comprehensive variable descriptions
+*   Include example usage in module documentation
+*   Test modules with different variable combinations
+*   Use consistent naming conventions across modules
