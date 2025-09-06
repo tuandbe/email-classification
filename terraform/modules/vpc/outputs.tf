@@ -51,8 +51,13 @@ output "ecs_ec2_security_group_id" {
 }
 
 output "alb_security_group_id" {
-  description = "ID of the security group for ALB"
-  value       = aws_security_group.alb.id
+  description = "ID of the security group for ALB (from data source)"
+  value       = data.aws_security_group.alb.id
+}
+
+output "ecs_task_security_group_id" {
+  description = "ID of the security group for ECS tasks"
+  value       = aws_security_group.ecs_task.id
 }
 
 output "availability_zones" {

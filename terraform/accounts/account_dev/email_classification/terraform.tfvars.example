@@ -25,9 +25,8 @@ ecs_max_capacity     = 2                 # Maximum 2 instances (for auto-scaling
 ecs_desired_capacity = 1                 # Start with 1 instance
 
 # Container Configuration - Minimal resources
-container_name  = "email-classification"
-container_image = "email-classification:latest"
-container_port  = 8000
+container_name = "email-classification"
+container_port = 8000
 
 # Task resource allocation - Minimal for cost optimization
 task_cpu    = 256   # 0.25 vCPU (minimum for ECS)

@@ -12,7 +12,9 @@ NC='\033[0m' # No Color
 # Configuration
 PROJECT_NAME="email-classification"
 ENVIRONMENT="dev"
-AWS_REGION="ap-northeast-1"
+AWS_REGION="ap-southeast-1"
+AWS_PROFILE="${AWS_PROFILE:-default}"
+AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-}"
 TERRAFORM_DIR="terraform"
 INIT_DIR="$TERRAFORM_DIR/accounts/account_dev/init"
 PROJECT_DIR="$TERRAFORM_DIR/accounts/account_dev/email_classification"
@@ -52,11 +54,36 @@ check_prerequisites() {
     fi
     
     # Check AWS credentials
-    if ! aws sts get-caller-identity &> /dev/null; then
-        log_error "AWS credentials not configured. Please run 'aws configure' first."
+    log_info "Checking AWS credentials with profile: $AWS_PROFILE"
+    if ! aws sts get-caller-identity --profile $AWS_PROFILE &> /dev/null; then
+        log_error "AWS credentials not configured for profile '$AWS_PROFILE'. Please run 'aws configure --profile $AWS_PROFILE' first."
         exit 1
     fi
     
+    # Check AWS Account ID
+    log_info "Checking AWS Account ID..."
+    if [ -z "$AWS_ACCOUNT_ID" ]; then
+        log_error "AWS_ACCOUNT_ID environment variable is not set. Please set it before running the script."
+        exit 1
+    fi
+    
+    # Get actual AWS Account ID from AWS CLI
+    ACTUAL_ACCOUNT_ID=$(aws sts get-caller-identity --profile $AWS_PROFILE --query Account --output text 2>/dev/null)
+    if [ -z "$ACTUAL_ACCOUNT_ID" ]; then
+        log_error "Failed to get AWS Account ID from AWS CLI."
+        exit 1
+    fi
+    
+    # Compare Account IDs
+    if [ "$AWS_ACCOUNT_ID" != "$ACTUAL_ACCOUNT_ID" ]; then
+        log_error "AWS Account ID mismatch!"
+        log_error "Expected: $AWS_ACCOUNT_ID"
+        log_error "Actual: $ACTUAL_ACCOUNT_ID"
+        log_error "Please set the correct AWS_ACCOUNT_ID environment variable."
+        exit 1
+    fi
+    
+    log_info "AWS Account ID verified: $AWS_ACCOUNT_ID"
     log_info "All prerequisites met!"
 }
 
@@ -111,25 +138,25 @@ deploy_project() {
 build_and_push_images() {
     log_info "Building and pushing Docker images..."
     
-    # Get AWS account ID
-    AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+    # Use AWS Account ID from environment variable
     ECR_REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+    ECR_REPOSITORY_URI="$ECR_REGISTRY/$PROJECT_NAME"
     
     # Login to ECR
     log_info "Logging in to ECR..."
-    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+    aws ecr get-login-password --region $AWS_REGION --profile $AWS_PROFILE | docker login --username AWS --password-stdin $ECR_REGISTRY
     
     # Build main application image
     log_info "Building main application image..."
     docker build -t $PROJECT_NAME:latest .
-    docker tag $PROJECT_NAME:latest $ECR_REGISTRY/$PROJECT_NAME:latest
-    docker push $ECR_REGISTRY/$PROJECT_NAME:latest
     
-    # Build nginx image
-    log_info "Building nginx image..."
-    docker build -f Dockerfile.nginx -t $PROJECT_NAME-nginx:latest .
-    docker tag $PROJECT_NAME-nginx:latest $ECR_REGISTRY/$PROJECT_NAME-nginx:latest
-    docker push $ECR_REGISTRY/$PROJECT_NAME-nginx:latest
+    # Tag image for ECR
+    log_info "Tagging image for ECR..."
+    docker tag $PROJECT_NAME:latest $ECR_REPOSITORY_URI:latest
+    
+    # Push image to ECR
+    log_info "Pushing image to ECR..."
+    docker push $ECR_REPOSITORY_URI:latest
     
     log_info "Docker images built and pushed successfully!"
 }
@@ -143,7 +170,6 @@ show_outputs() {
     API_URL=$(terraform output -raw api_url 2>/dev/null || echo "Not available")
     DOMAIN_NAME=$(terraform output -raw domain_name 2>/dev/null || echo "Not available")
     ECR_MAIN_URL=$(terraform output -raw ecr_main_repository_url 2>/dev/null || echo "Not available")
-    ECR_NGINX_URL=$(terraform output -raw ecr_nginx_repository_url 2>/dev/null || echo "Not available")
     
     cd - > /dev/null
     
@@ -152,10 +178,8 @@ show_outputs() {
     echo "API URL: $API_URL"
     echo "Domain: $DOMAIN_NAME"
     echo "ECR Main Repository: $ECR_MAIN_URL"
-    echo "ECR Nginx Repository: $ECR_NGINX_URL"
     echo ""
     log_info "Deployment completed successfully!"
-    log_warn "Note: It may take a few minutes for the SSL certificate to be generated and the service to be fully available."
 }
 
 destroy_infrastructure() {
@@ -182,7 +206,6 @@ destroy_infrastructure() {
 case "${1:-deploy}" in
     "deploy")
         check_prerequisites
-        deploy_init
         deploy_project
         build_and_push_images
         show_outputs

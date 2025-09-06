@@ -16,8 +16,18 @@ variable "public_subnet_ids" {
   type        = list(string)
 }
 
+variable "private_subnet_ids" {
+  description = "List of private subnet IDs for ECS tasks"
+  type        = list(string)
+}
+
 variable "ecs_ec2_security_group_id" {
   description = "Security group ID for ECS EC2 instances"
+  type        = string
+}
+
+variable "ecs_task_security_group_id" {
+  description = "Security group ID for ECS tasks"
   type        = string
 }
 

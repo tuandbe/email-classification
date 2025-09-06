@@ -89,11 +89,6 @@ variable "container_name" {
   default     = "email-classification"
 }
 
-variable "container_image" {
-  description = "Docker image for the container"
-  type        = string
-  default     = "email-classification:latest"
-}
 
 variable "container_port" {
   description = "Port that the container listens on"

@@ -92,9 +92,11 @@ module "ecs" {
   project_name = var.project_name
   environment  = var.environment
 
-  public_subnet_ids         = module.vpc.public_subnet_ids
-  ecs_ec2_security_group_id = module.vpc.ecs_ec2_security_group_id
-  target_group_arn          = module.alb.target_group_arn
+  public_subnet_ids          = module.vpc.public_subnet_ids
+  private_subnet_ids         = module.vpc.private_subnet_ids
+  ecs_ec2_security_group_id  = module.vpc.ecs_ec2_security_group_id
+  ecs_task_security_group_id = module.vpc.ecs_task_security_group_id
+  target_group_arn           = module.alb.target_group_arn
 
   instance_type    = var.ecs_instance_type
   min_capacity     = var.ecs_min_capacity
@@ -102,7 +104,7 @@ module "ecs" {
   desired_capacity = var.ecs_desired_capacity
 
   container_name  = var.container_name
-  container_image = var.container_image
+  container_image = "${module.ecr.main_repository_url}:latest"
   container_port  = var.container_port
 
   task_cpu    = var.task_cpu
