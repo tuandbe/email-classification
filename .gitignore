@@ -201,12 +201,12 @@ override.tf.json
 .terraformrc
 terraform.rc
 
-# Terraform lock files (uncomment if using Terraform Cloud/Enterprise)
-# .terraform.lock.hcl
+# Terraform lock files
+.terraform.lock.hcl
 
-# Terraform state files (uncomment if not using remote state)
-# terraform.tfstate
-# terraform.tfstate.*
+# Terraform state files
+terraform.tfstate
+terraform.tfstate.*
 
 # Terraform temporary files
 .terraform.tfstate.lock.info
