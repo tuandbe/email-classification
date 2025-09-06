@@ -86,13 +86,13 @@ ecr_scan_on_push = true           # Enable scanning
 
 3. **Build and push images**:
    ```bash
-   # Get ECR login
-   aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin 497046673845.dkr.ecr.ap-southeast-1.amazonaws.com
+   # Get ECR login (replace with your actual AWS account ID and region)
+   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 123456789012.dkr.ecr.us-east-1.amazonaws.com
    
    # Build and push
    docker build -t email-classification:latest .
-   docker tag email-classification:latest 497046673845.dkr.ecr.ap-southeast-1.amazonaws.com/email-classification:latest
-   docker push 497046673845.dkr.ecr.ap-southeast-1.amazonaws.com/email-classification:latest
+   docker tag email-classification:latest 123456789012.dkr.ecr.us-east-1.amazonaws.com/email-classification:latest
+   docker push 123456789012.dkr.ecr.us-east-1.amazonaws.com/email-classification:latest
    ```
 
 ## Cost Estimation (Development)
@@ -142,7 +142,7 @@ ecr_scan_on_push = true           # Enable scanning
 
 ### Health Checks
 
-- Application health endpoint: `https://api.ai.demo.dev.mie.best/health`
+- Application health endpoint: `https://api.example.com/health`
 - ALB health checks (target group health)
 - ECS service health checks
 - EC2 instance health checks
