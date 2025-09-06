@@ -11,7 +11,6 @@ NC='\033[0m' # No Color
 
 # Configuration
 PROJECT_NAME="email-classification"
-ENVIRONMENT="dev"
 AWS_REGION="ap-southeast-1"
 AWS_PROFILE="${AWS_PROFILE:-default}"
 AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-}"
@@ -214,7 +213,6 @@ force_update_ecs_service() {
         return 1
     fi
 }
-
 show_outputs() {
     log_info "Getting deployment outputs..."
     
