@@ -14,9 +14,13 @@ resource "aws_ecr_repository" "main" {
     encryption_type = var.encryption_type
   }
 
-  tags = {
-    Name = "${var.project_name}-ecr-main"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-ecr-main"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 

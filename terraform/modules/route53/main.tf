@@ -5,9 +5,13 @@
 resource "aws_route53_zone" "main" {
   name = var.domain_name
 
-  tags = {
-    Name = "${var.project_name}-hosted-zone"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-hosted-zone"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # A Record for API subdomain (ALB alias) - only create if ALB info is provided

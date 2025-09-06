@@ -10,10 +10,6 @@ variable "environment" {
   type        = string
 }
 
-variable "vpc_id" {
-  description = "ID of the VPC"
-  type        = string
-}
 
 variable "public_subnet_ids" {
   description = "List of public subnet IDs"
@@ -91,7 +87,7 @@ variable "desired_count" {
 
 variable "container_environment" {
   description = "Environment variables for the container"
-  type        = list(object({
+  type = list(object({
     name  = string
     value = string
   }))

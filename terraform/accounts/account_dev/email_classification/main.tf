@@ -25,13 +25,13 @@ module "vpc" {
 module "ecr" {
   source = "../../../modules/ecr"
 
-  project_name     = var.project_name
-  environment      = var.environment
-  repository_name  = var.ecr_repository_name
+  project_name    = var.project_name
+  environment     = var.environment
+  repository_name = var.ecr_repository_name
 
-  max_image_count      = var.ecr_max_image_count
-  untagged_image_days  = var.ecr_untagged_image_days
-  scan_on_push         = var.ecr_scan_on_push
+  max_image_count     = var.ecr_max_image_count
+  untagged_image_days = var.ecr_untagged_image_days
+  scan_on_push        = var.ecr_scan_on_push
 
   tags = var.tags
 }
@@ -40,13 +40,13 @@ module "ecr" {
 module "route53" {
   source = "../../../modules/route53"
 
-  project_name    = var.project_name
-  environment     = var.environment
-  domain_name     = var.domain_name
-  api_subdomain   = var.api_subdomain
+  project_name  = var.project_name
+  environment   = var.environment
+  domain_name   = var.domain_name
+  api_subdomain = var.api_subdomain
   # ALB information will be added later
-  alb_dns_name    = ""
-  alb_zone_id     = ""
+  alb_dns_name = ""
+  alb_zone_id  = ""
 
   ttl = var.dns_ttl
 
@@ -57,9 +57,9 @@ module "route53" {
 module "acm" {
   source = "../../../modules/acm"
 
-  project_name = var.project_name
-  environment  = var.environment
-  domain_name  = var.api_subdomain
+  project_name   = var.project_name
+  environment    = var.environment
+  domain_name    = var.api_subdomain
   hosted_zone_id = module.route53.hosted_zone_id
 
   tags = var.tags
@@ -74,11 +74,11 @@ module "alb" {
   project_name = var.project_name
   environment  = var.environment
 
-  vpc_id             = module.vpc.vpc_id
-  public_subnet_ids  = module.vpc.public_subnet_ids
-  certificate_arn    = module.acm.certificate_arn
-  target_port        = var.container_port
-  health_check_path  = var.health_check_path
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_ids = module.vpc.public_subnet_ids
+  certificate_arn   = module.acm.certificate_arn
+  target_port       = var.container_port
+  health_check_path = var.health_check_path
 
   tags = var.tags
 
@@ -92,15 +92,14 @@ module "ecs" {
   project_name = var.project_name
   environment  = var.environment
 
-  vpc_id                      = module.vpc.vpc_id
-  public_subnet_ids           = module.vpc.public_subnet_ids
-  ecs_ec2_security_group_id   = module.vpc.ecs_ec2_security_group_id
-  target_group_arn            = module.alb.target_group_arn
+  public_subnet_ids         = module.vpc.public_subnet_ids
+  ecs_ec2_security_group_id = module.vpc.ecs_ec2_security_group_id
+  target_group_arn          = module.alb.target_group_arn
 
-  instance_type     = var.ecs_instance_type
-  min_capacity      = var.ecs_min_capacity
-  max_capacity      = var.ecs_max_capacity
-  desired_capacity  = var.ecs_desired_capacity
+  instance_type    = var.ecs_instance_type
+  min_capacity     = var.ecs_min_capacity
+  max_capacity     = var.ecs_max_capacity
+  desired_capacity = var.ecs_desired_capacity
 
   container_name  = var.container_name
   container_image = var.container_image

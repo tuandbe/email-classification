@@ -12,16 +12,6 @@ variable "environment" {
   default     = "dev"
 }
 
-variable "aws_region" {
-  description = "AWS region"
-  type        = string
-  default     = "ap-southeast-1"
-}
-
-variable "aws_account_id" {
-  description = "AWS account ID"
-  type        = string
-}
 
 # VPC Configuration
 variable "vpc_cidr" {
@@ -163,11 +153,6 @@ variable "health_check_path" {
   default     = "/health"
 }
 
-variable "enable_deletion_protection" {
-  description = "Enable deletion protection for ALB"
-  type        = bool
-  default     = false
-}
 
 # Tags
 variable "tags" {

@@ -9,12 +9,18 @@ data "aws_caller_identity" "current" {}
 
 # S3 bucket for Terraform state
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "tfstate-email-classification-dev"
+  bucket = "tfstate-${var.project_name}-${var.environment}"
 
-  tags = {
-    Name    = "terraform-state-email-classification-dev"
-    Purpose = "terraform-state-storage"
-  }
+  tags = merge(
+    {
+      Name        = "terraform-state-${var.project_name}-${var.environment}"
+      Purpose     = "terraform-state-storage"
+      Environment = var.environment
+      Project     = var.project_name
+      Region      = var.aws_region
+    },
+    var.tags
+  )
 }
 
 # S3 bucket versioning

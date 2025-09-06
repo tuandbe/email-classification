@@ -22,7 +22,7 @@ terraform {
 # Default tags for all AWS resources in this account
 provider "aws" {
   region = "ap-southeast-1"
-  
+
   default_tags {
     tags = {
       Environment = "dev"

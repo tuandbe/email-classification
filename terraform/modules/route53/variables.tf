@@ -60,8 +60,8 @@ variable "mx_records" {
 
 variable "txt_records" {
   description = "TXT records for verification"
-  type = map(list(string))
-  default = {}
+  type        = map(list(string))
+  default     = {}
 }
 
 variable "tags" {

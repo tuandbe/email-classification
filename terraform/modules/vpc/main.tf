@@ -12,18 +12,26 @@ resource "aws_vpc" "main" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  tags = {
-    Name = "${var.project_name}-vpc"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-vpc"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
 
-  tags = {
-    Name = "${var.project_name}-igw"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-igw"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Public Subnets
@@ -35,10 +43,14 @@ resource "aws_subnet" "public" {
   availability_zone       = data.aws_availability_zones.available.names[count.index]
   map_public_ip_on_launch = true
 
-  tags = {
-    Name = "${var.project_name}-public-subnet-${count.index + 1}"
-    Type = "public"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-public-subnet-${count.index + 1}"
+      Type        = "public"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Private Subnets
@@ -49,10 +61,14 @@ resource "aws_subnet" "private" {
   cidr_block        = var.private_subnet_cidrs[count.index]
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
-  tags = {
-    Name = "${var.project_name}-private-subnet-${count.index + 1}"
-    Type = "private"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-private-subnet-${count.index + 1}"
+      Type        = "private"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Route Table for Public Subnets
@@ -64,9 +80,13 @@ resource "aws_route_table" "public" {
     gateway_id = aws_internet_gateway.main.id
   }
 
-  tags = {
-    Name = "${var.project_name}-public-rt"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-public-rt"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Route Table for Private Subnets
@@ -75,9 +95,13 @@ resource "aws_route_table" "private" {
 
   vpc_id = aws_vpc.main.id
 
-  tags = {
-    Name = "${var.project_name}-private-rt-${count.index + 1}"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-private-rt-${count.index + 1}"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Associate Public Subnets with Public Route Table
@@ -133,9 +157,13 @@ resource "aws_security_group" "ecs_ec2" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "${var.project_name}-ecs-ec2-sg"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-ecs-ec2-sg"
+      Environment = var.environment
+    },
+    var.tags
+  )
 
   lifecycle {
     create_before_destroy = true
@@ -171,9 +199,13 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name = "${var.project_name}-alb-sg"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-alb-sg"
+      Environment = var.environment
+    },
+    var.tags
+  )
 
   lifecycle {
     create_before_destroy = true

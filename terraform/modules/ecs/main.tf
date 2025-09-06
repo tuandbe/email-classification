@@ -26,9 +26,13 @@ resource "aws_ecs_cluster" "main" {
     value = "enabled"
   }
 
-  tags = {
-    Name = "${var.project_name}-cluster"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-cluster"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # ECS Cluster Capacity Providers
@@ -60,9 +64,13 @@ resource "aws_ecs_capacity_provider" "main" {
     }
   }
 
-  tags = {
-    Name = "${var.project_name}-capacity-provider"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-capacity-provider"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Launch Template for ECS EC2 instances
@@ -83,14 +91,22 @@ resource "aws_launch_template" "ecs" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = {
-      Name = "${var.project_name}-ecs-instance"
-    }
+    tags = merge(
+      {
+        Name        = "${var.project_name}-ecs-instance"
+        Environment = var.environment
+      },
+      var.tags
+    )
   }
 
-  tags = {
-    Name = "${var.project_name}-ecs-launch-template"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-ecs-launch-template"
+      Environment = var.environment
+    },
+    var.tags
+  )
 
   lifecycle {
     create_before_destroy = true
@@ -99,10 +115,10 @@ resource "aws_launch_template" "ecs" {
 
 # Auto Scaling Group
 resource "aws_autoscaling_group" "ecs" {
-  name                = "${var.project_name}-ecs-asg"
-  vpc_zone_identifier = var.public_subnet_ids
-  target_group_arns   = []
-  health_check_type   = "EC2"
+  name                      = "${var.project_name}-ecs-asg"
+  vpc_zone_identifier       = var.public_subnet_ids
+  target_group_arns         = []
+  health_check_type         = "EC2"
   health_check_grace_period = 300
 
   min_size         = var.min_capacity
@@ -123,6 +139,12 @@ resource "aws_autoscaling_group" "ecs" {
   tag {
     key                 = "Name"
     value               = "${var.project_name}-ecs-instance"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "Environment"
+    value               = var.environment
     propagate_at_launch = true
   }
 
@@ -149,9 +171,13 @@ resource "aws_iam_role" "ecs_ec2" {
     ]
   })
 
-  tags = {
-    Name = "${var.project_name}-ecs-ec2-role"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-ecs-ec2-role"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # IAM Instance Profile
@@ -159,9 +185,13 @@ resource "aws_iam_instance_profile" "ecs_ec2" {
   name = "${var.project_name}-ecs-ec2-instance-profile"
   role = aws_iam_role.ecs_ec2.name
 
-  tags = {
-    Name = "${var.project_name}-ecs-ec2-instance-profile"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-ecs-ec2-instance-profile"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Attach ECS Instance Policy
@@ -208,9 +238,13 @@ resource "aws_ecs_task_definition" "main" {
     }
   ])
 
-  tags = {
-    Name = "${var.project_name}-task-definition"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-task-definition"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # ECS Service
@@ -235,9 +269,13 @@ resource "aws_ecs_service" "main" {
 
   depends_on = [aws_ecs_cluster_capacity_providers.main]
 
-  tags = {
-    Name = "${var.project_name}-service"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-service"
+      Environment = var.environment
+    },
+    var.tags
+  )
 
   lifecycle {
     ignore_changes = [desired_count]
@@ -249,9 +287,13 @@ resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/${var.project_name}"
   retention_in_days = var.log_retention_days
 
-  tags = {
-    Name = "${var.project_name}-ecs-logs"
-  }
+  tags = merge(
+    {
+      Name        = "${var.project_name}-ecs-logs"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Data source for current AWS region
