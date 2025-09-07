@@ -17,6 +17,7 @@ AWS_ACCOUNT_ID="${AWS_ACCOUNT_ID:-}"
 TERRAFORM_DIR="terraform"
 INIT_DIR="$TERRAFORM_DIR/accounts/account_dev/init"
 PROJECT_DIR="$TERRAFORM_DIR/accounts/account_dev/email_classification"
+BUILD_TIMESTAMP=""
 
 # Functions
 log_info() {
@@ -146,7 +147,8 @@ build_and_push_images() {
     aws ecr get-login-password --region $AWS_REGION --profile $AWS_PROFILE | docker login --username AWS --password-stdin $ECR_REGISTRY
     
     # Generate timestamp tag for unique image version
-    TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+    BUILD_TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+    TIMESTAMP="$BUILD_TIMESTAMP"
     
     # Build main application image
     log_info "Building main application image with timestamp: $TIMESTAMP"
@@ -168,40 +170,97 @@ build_and_push_images() {
     log_info "Docker images built and pushed successfully!"
 }
 
-force_update_ecs_service() {
-    log_info "Force updating ECS service to use new image..."
+update_ecs_service() {
+    log_info "Updating ECS service to use new image (rolling deployment)..."
     
     # Get cluster and service names from Terraform outputs
     CLUSTER_NAME=$(cd "$PROJECT_DIR" && terraform output -raw ecs_cluster_name 2>/dev/null || echo "email-classification-cluster")
     SERVICE_NAME=$(cd "$PROJECT_DIR" && terraform output -raw ecs_service_name 2>/dev/null || echo "email-classification-service")
+    TASK_DEFINITION_FAMILY=$(cd "$PROJECT_DIR" && terraform output -raw ecs_task_definition_family 2>/dev/null || echo "email-classification-task")
     
-    if [ -z "$CLUSTER_NAME" ] || [ -z "$SERVICE_NAME" ]; then
-        log_error "Could not determine cluster or service name. Please check Terraform outputs."
+    if [ -z "$CLUSTER_NAME" ] || [ -z "$SERVICE_NAME" ] || [ -z "$TASK_DEFINITION_FAMILY" ]; then
+        log_error "Could not determine cluster, service, or task definition name. Please check Terraform outputs."
         return 1
     fi
     
-    log_info "Updating ECS service: $SERVICE_NAME in cluster: $CLUSTER_NAME"
+    # Get current task definition
+    log_info "Getting current task definition..."
+    CURRENT_TASK_DEF=$(aws ecs describe-task-definition \
+        --task-definition "$TASK_DEFINITION_FAMILY" \
+        --region "$AWS_REGION" \
+        --profile "$AWS_PROFILE" \
+        --query 'taskDefinition' \
+        --output json)
     
-    # Force new deployment
+    if [ $? -ne 0 ]; then
+        log_error "Failed to get current task definition"
+        return 1
+    fi
+    
+    # Get ECR repository URI
+    ECR_REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+    ECR_REPOSITORY_URI="$ECR_REGISTRY/$PROJECT_NAME"
+    
+    # Use timestamped image if available, otherwise use latest
+    if [ -n "$BUILD_TIMESTAMP" ]; then
+        NEW_IMAGE_URI="$ECR_REPOSITORY_URI:$BUILD_TIMESTAMP"
+    else
+        NEW_IMAGE_URI="$ECR_REPOSITORY_URI:latest"
+    fi
+    
+    log_info "Creating new task definition with image: $NEW_IMAGE_URI"
+    
+    # Create new task definition with updated image
+    NEW_TASK_DEF=$(echo "$CURRENT_TASK_DEF" | jq --arg image "$NEW_IMAGE_URI" '
+        del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy) |
+        .containerDefinitions[0].image = $image
+    ')
+    
+    # Save new task definition to temporary file
+    TEMP_TASK_DEF_FILE="/tmp/new_task_definition.json"
+    echo "$NEW_TASK_DEF" > "$TEMP_TASK_DEF_FILE"
+    
+    # Register new task definition
+    NEW_TASK_DEF_ARN=$(aws ecs register-task-definition \
+        --region "$AWS_REGION" \
+        --profile "$AWS_PROFILE" \
+        --cli-input-json "file://$TEMP_TASK_DEF_FILE" \
+        --query 'taskDefinition.taskDefinitionArn' \
+        --output text)
+    
+    # Clean up temporary file
+    rm -f "$TEMP_TASK_DEF_FILE"
+    
+    if [ $? -ne 0 ]; then
+        log_error "Failed to register new task definition"
+        return 1
+    fi
+    
+    log_info "New task definition registered: $NEW_TASK_DEF_ARN"
+    
+    # Update ECS service with new task definition
+    log_info "Updating ECS service: $SERVICE_NAME in cluster: $CLUSTER_NAME"
     aws ecs update-service \
         --cluster "$CLUSTER_NAME" \
         --service "$SERVICE_NAME" \
-        --force-new-deployment \
+        --task-definition "$NEW_TASK_DEF_ARN" \
         --region "$AWS_REGION" \
         --profile "$AWS_PROFILE" \
         --query 'service.serviceName' \
+        --no-cli-pager \
         --output text
     
     if [ $? -eq 0 ]; then
         log_info "ECS service update initiated successfully!"
-        log_info "Waiting for service to stabilize..."
+        log_info "Waiting for service to stabilize (rolling deployment in progress)..."
         
         # Wait for service to stabilize
         aws ecs wait services-stable \
             --cluster "$CLUSTER_NAME" \
             --services "$SERVICE_NAME" \
             --region "$AWS_REGION" \
-            --profile "$AWS_PROFILE"
+            --profile "$AWS_PROFILE" \
+            --no-cli-pager
         
         if [ $? -eq 0 ]; then
             log_info "ECS service is now stable and running with new image!"
@@ -276,11 +335,11 @@ case "${1:-deploy}" in
     "images-only")
         check_prerequisites
         build_and_push_images
-        force_update_ecs_service
+        update_ecs_service
         ;;
     "update-ecs")
         check_prerequisites
-        force_update_ecs_service
+        update_ecs_service
         ;;
     *)
         echo "Usage: $0 {deploy|destroy|init-only|project-only|images-only|update-ecs}"

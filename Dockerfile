@@ -22,8 +22,12 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download NLTK data during build time
-RUN python -c "import nltk; nltk.download('punkt', quiet=True); nltk.download('punkt_tab', quiet=True); nltk.download('stopwords', quiet=True)"
+# Create scripts directory and copy NLTK download script
+RUN mkdir -p scripts
+COPY scripts/download_nltk_data.py ./scripts/
+
+# Download NLTK data during build time using the script
+RUN python scripts/download_nltk_data.py
 
 # Copy application code
 COPY app/ ./app/

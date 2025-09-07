@@ -31,16 +31,24 @@ class TextPreprocessor:
             nltk.data.find("tokenizers/punkt")
             logger.debug("NLTK punkt tokenizer is available")
         except LookupError:
-            logger.error("NLTK punkt tokenizer not found. Please ensure NLTK data was downloaded during build time.")
-            raise RuntimeError("NLTK punkt tokenizer not available. Check Docker build process.")
+            logger.error(
+                "NLTK punkt tokenizer not found. Please ensure NLTK data was downloaded during build time."
+            )
+            raise RuntimeError(
+                "NLTK punkt tokenizer not available. Check Docker build process."
+            )
 
         try:
             # Check if stopwords are available
             nltk.data.find("corpora/stopwords")
             logger.debug("NLTK stopwords are available")
         except LookupError:
-            logger.error("NLTK stopwords not found. Please ensure NLTK data was downloaded during build time.")
-            raise RuntimeError("NLTK stopwords not available. Check Docker build process.")
+            logger.error(
+                "NLTK stopwords not found. Please ensure NLTK data was downloaded during build time."
+            )
+            raise RuntimeError(
+                "NLTK stopwords not available. Check Docker build process."
+            )
 
     def _get_stop_words(self) -> set:
         """Get English stop words."""
@@ -52,7 +60,9 @@ class TextPreprocessor:
                 logger.error(f"NLTK stopwords not available: {e}. Using empty set.")
                 self._stop_words = set()
             except Exception as e:
-                logger.error(f"Unexpected error loading stop words: {e}. Using empty set.")
+                logger.error(
+                    f"Unexpected error loading stop words: {e}. Using empty set."
+                )
                 self._stop_words = set()
         return self._stop_words
 
@@ -114,10 +124,14 @@ class TextPreprocessor:
             stop_words = self._get_stop_words()
             filtered_tokens = [token for token in tokens if token not in stop_words]
 
-            logger.debug(f"Removed stop words: {len(tokens) - len(filtered_tokens)} tokens removed")
+            logger.debug(
+                f"Removed stop words: {len(tokens) - len(filtered_tokens)} tokens removed"
+            )
             return " ".join(filtered_tokens)
         except Exception as e:
-            logger.warning(f"Failed to remove stop words: {e}. Returning original text.")
+            logger.warning(
+                f"Failed to remove stop words: {e}. Returning original text."
+            )
             return text
 
     def preprocess(self, text: str, remove_stop_words: bool = True) -> str:
