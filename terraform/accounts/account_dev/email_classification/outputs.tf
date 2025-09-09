@@ -48,6 +48,11 @@ output "ecs_task_definition_arn" {
   value       = module.ecs.task_definition_arn
 }
 
+output "ecs_task_definition_family" {
+  description = "Family of the task definition"
+  value       = module.ecs.task_definition_family
+}
+
 # Route53 Outputs
 output "hosted_zone_id" {
   description = "ID of the hosted zone"

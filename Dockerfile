@@ -22,6 +22,13 @@ COPY requirements.txt .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create scripts directory and copy NLTK download script
+RUN mkdir -p scripts
+COPY scripts/download_nltk_data.py ./scripts/
+
+# Download NLTK data during build time using the script
+RUN python scripts/download_nltk_data.py
+
 # Copy application code
 COPY app/ ./app/
 COPY models/ ./models/
@@ -32,8 +39,8 @@ RUN mkdir -p models logs
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+# Health check - reduced frequency to minimize logs
+HEALTHCHECK --interval=60s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Run the application

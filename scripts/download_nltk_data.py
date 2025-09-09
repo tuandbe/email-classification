@@ -24,6 +24,22 @@ def download_nltk_data():
         print("Downloading stopwords...")
         nltk.download("stopwords", quiet=True)
 
+        # Verify downloads
+        print("Verifying NLTK data...")
+        try:
+            nltk.data.find("tokenizers/punkt")
+            print("✅ Punkt tokenizer verified")
+        except LookupError:
+            print("❌ Punkt tokenizer not found")
+            raise
+
+        try:
+            nltk.data.find("corpora/stopwords")
+            print("✅ Stopwords verified")
+        except LookupError:
+            print("❌ Stopwords not found")
+            raise
+
         print("NLTK data download completed successfully!")
 
     except Exception as e:
